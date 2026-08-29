@@ -1,0 +1,56 @@
+[
+    {
+        "chunk_id": "chunk-001",
+        "conversation_id": "6a92d8fb-f92c-83ee-adf9-94329067b768",
+        "type": "text",
+        "text": " User: hello chat  \n\n assistant: Hey Nikhil! 👋  \nI'm doing good. How are you?\n\nWhat are we working on today — **ML/RAG, your scraper project, coding, or something new?** ",
+        "embedded_text": "",
+        "verbatim": true,
+        "source_message_ids": [
+            "225ec337-55fc-4171-9556-960407612843",
+            "c21e98c0-793f-46c4-83b4-9d7f4052cd5a"
+        ],
+        "roles_included": [
+            "user",
+            "assistant"
+        ],
+        "order_index": 0,
+        "char_count": 170
+    },
+    {
+        "chunk_id": "chunk-002",
+        "conversation_id": "6a92d8fb-f92c-83ee-adf9-94329067b768",
+        "type": "text",
+        "text": " User: where are you \n\n assistant: I’m right here in this chat 😄\n\nIf you mean **physically**, I don’t have a physical location—I’m an AI running on OpenAI’s systems. ",
+        "embedded_text": "",
+        "verbatim": true,
+        "source_message_ids": [
+            "4cbdbfff-643b-4e40-b025-ce5f82439c58",
+            "fc8d21f9-eee4-4930-b015-fab95f4ba5c1"
+        ],
+        "roles_included": [
+            "user",
+            "assistant"
+        ],
+        "order_index": 1,
+        "char_count": 166
+    },
+    {
+        "chunk_id": "chunk-003",
+        "conversation_id": "6a92d8fb-f92c-83ee-adf9-94329067b768",
+        "type": "text",
+        "text": " User: why \n\n assistant: Because I’m not a human sitting in a particular place 😄. I’m software running on computers/servers, and you interact with me through ChatGPT.\n\nSo basically:\n\n**You:** sitting somewhere in the real world 🌍  \n**Me:** running as an AI on servers ☁️  \n**This chat:** connects us 💬 ",
+        "embedded_text": "",
+        "verbatim": true,
+        "source_message_ids": [
+            "331aa7eb-cefa-4c52-8120-1dab01129b74",
+            "5b3f6d5f-5cd2-4909-8df2-108d1719f102"
+        ],
+        "roles_included": [
+            "user",
+            "assistant"
+        ],
+        "order_index": 2,
+        "char_count": 302
+    }
+]

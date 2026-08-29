@@ -1,0 +1,58 @@
+{
+  "conversation_id": "chatgpt-xyz-share",
+  "platform": "chatgpt",
+  "source_url": "https://chatgpt.com/share/xyz",
+  "title": "Discussing RAG pipeline design",
+  "scraped_at": "2026-08-29T10:00:00Z",
+  "messages": [
+    {
+      "id": "msg-1",
+      "role": "user",
+      "timestamp": 1717430400,
+      "content": [
+        {
+          "type": "text",
+          "text": "How should I chunk a long conversation for RAG?"
+        }
+      ]
+    },
+    {
+      "id": "msg-2",
+      "role": "assistant",
+      "timestamp": 1717430415,
+      "content": [
+        {
+          "type": "text",
+          "text": "You can use turn-based or semantic chunking. Here's a basic implementation:"
+        },
+        {
+          "type": "code",
+          "language": "python",
+          "text": "def chunk_text(text, size=500):\n    return [text[i:i+size] for i in range(0, len(text), size)]",
+          "verbatim": true
+        }
+      ]
+    },
+    {
+      "id": "msg-3",
+      "role": "user",
+      "timestamp": 1717430500,
+      "content": [
+        {
+          "type": "text",
+          "text": "Here's the error I'm getting, and a screenshot:"
+        },
+        {
+          "type": "file",
+          "filename": "error_log.pdf",
+          "extracted_text": "Traceback (most recent call last): ..."
+        },
+        {
+          "type": "image",
+          "filename": "screenshot.png",
+          "caption": "Screenshot of the terminal showing the stack trace"
+        }
+      ]
+    }
+  ]
+}

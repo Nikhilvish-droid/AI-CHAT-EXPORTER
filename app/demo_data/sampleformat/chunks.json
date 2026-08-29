@@ -1,0 +1,28 @@
+[
+  { 
+    
+    "chunk_id": "chunk-014",
+    "conversation_id": "chatgpt-xyz-share",
+    "type": "text",
+    "text": "User asked how to chunk a long conversation for RAG. Assistant explained turn-based vs semantic chunking, recommending turn-based as a starting point.",
+    "verbatim": false,
+    "source_message_ids": ["msg-1", "msg-2"],
+    "roles_included": ["user", "assistant"],
+    "order_index": 14,
+    "char_count": 187,
+    "embedding_id": null
+  },
+  {
+    "chunk_id": "chunk-015",
+    "conversation_id": "chatgpt-xyz-share",
+    "type": "code",
+    "text": "def chunk_text(text, size=500):\n    return [text[i:i+size] for i in range(0, len(text), size)]",
+    "language": "python",
+    "verbatim": true,
+    "source_message_ids": ["msg-3"],
+    "roles_included": ["user"],
+    "order_index": 15,
+    "char_count": 92,
+    "embedding_id": null
+  }
+]    

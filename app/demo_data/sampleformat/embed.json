@@ -1,0 +1,16 @@
+{
+  "chunk_id": "chunk-015",
+  "embedding_id": "emb-015",
+  "vector": [0.0123, -0.0456, 0.0789, "...384 floats total for MiniLM"],
+  "embedded_text": "A Python function that splits text into fixed-size chunks with a given size parameter.",
+  "metadata": {
+    "chunk_id": "chunk-015",
+    "conversation_id": "chatgpt-xyz-share",
+    "type": "code",
+    "language": "python",
+    "verbatim": true,
+    "order_index": 15,
+    "roles_included": ["user"]
+  },
+  "raw_text": "def chunk_text(text, size=500):\n    return [text[i:i+size] for i in range(0, len(text), size)]"
+}

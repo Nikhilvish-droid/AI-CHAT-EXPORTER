@@ -1,13 +1,21 @@
 from fastapi import APIRouter
-from app.services.fetcher import html_fetcher
+from fastapi.responses import JSONResponse
+# from app.services.fetcher import html_fetcher
+from app.services.scraper import chat_scraper
 
 router = APIRouter()
 
 @router.post("/submit-link")
-def submit_link(url: str):
-    data = html_fetcher(url)
+def submit_link(url: str): 
 
-    return data;
+    response = chat_scraper(url)
+
+    return JSONResponse(
+        status_code=201,
+        content=response
+    )
+
+
 
 
 

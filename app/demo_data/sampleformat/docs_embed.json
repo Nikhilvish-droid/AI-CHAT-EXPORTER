@@ -1,0 +1,22 @@
+{
+  "template_version": "2.0",
+  "model": "all-MiniLM-L6-v2",
+  "query_embeddings": {
+    "overview": {
+      "query_text": "what is this conversation about, overall goal, main topic",
+      "vector": [0.021, -0.034, "...384 floats total"]
+    },
+    "key_decisions": {
+      "query_text": "decisions made, choices agreed upon, conclusions reached",
+      "vector": [0.045, 0.011, "...384 floats total"]
+    },
+    "open_questions": {
+      "query_text": "unresolved questions, things still being figured out, pending issues",
+      "vector": [-0.012, 0.098, "...384 floats total"]
+    },
+    "next_steps": {
+      "query_text": "what to do next, planned next action, upcoming task",
+      "vector": [0.033, -0.056, "...384 floats total"]
+    }
+  }
+}

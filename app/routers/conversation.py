@@ -6,6 +6,7 @@ from app.services.chunks import create_chunks
 from app.services.embedding import create_embeddings
 from app.services.chroma import add_chunks_to_chroma
 from app.services.retrieval import retrieve_data
+from app.services.llm import openai_llm
 
 router = APIRouter()
 
@@ -31,9 +32,12 @@ def submit_link(url: str):
     
     retrieval_data = retrieve_data(conversation_id)
 
+
+    result = openai_llm(retrieval_data)
+
     return JSONResponse(
         status_code=201,
-        content=retrieval_data
+        content=result
     )
 
 

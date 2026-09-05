@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 import re
 from curl_cffi import requests as cffi_requests
 
-folder = "data7" 
+folder = "data8" 
 
 html_file = Path(__file__).parent.parent/"demo_data"/folder/"scrape.html"
 script_file = Path(__file__).parent.parent/"demo_data"/folder/"script.txt"

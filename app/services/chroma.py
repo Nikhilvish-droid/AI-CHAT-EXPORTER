@@ -3,7 +3,7 @@ from pathlib import Path
 import json
 
 
-folder = "data7"
+folder = "data8"
 embed_json = Path(__file__).parent.parent/"demo_data"/folder/"embed.json"
 chromapath = Path(__file__).parent.parent/"chroma_data"
 

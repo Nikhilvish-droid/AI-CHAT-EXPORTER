@@ -2,7 +2,7 @@ from sentence_transformers import SentenceTransformer
 from pathlib import Path
 import json
 
-folder = "data7"
+folder = "data8"
 chunks = Path(__file__).parent.parent/"demo_data"/folder/"chunks.json"
 embeddings = Path(__file__).parent.parent/"demo_data"/folder/"embed.json"
 docs_embed = Path(__file__).parent.parent/"demo_data"/folder/"docs_embed.json"
@@ -24,10 +24,11 @@ def create_embeddings(chunk_data):
         embedding = model.encode(embed_text, normalize_embeddings=True)
 
         chunk["embedding"] = embedding.tolist()
-        print(len(embedding), chunk.get("chunk_id"))
 
     with open(embeddings, 'w', encoding="utf-8")as file:
         json.dump(chunk_data, file, indent=4, ensure_ascii=False)
+
+    get_docs_embed()
 
     return{
         "ok":True,

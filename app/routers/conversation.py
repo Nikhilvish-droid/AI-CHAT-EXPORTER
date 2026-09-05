@@ -7,6 +7,7 @@ from app.services.embedding import create_embeddings
 from app.services.chroma import add_chunks_to_chroma
 from app.services.retrieval import retrieve_data
 from app.services.llm import openai_llm
+from app.services.pdfgenerator import generate_pdf
 
 router = APIRouter()
 
@@ -19,6 +20,10 @@ def submit_link(url: str):
         return response.get("message")
 
     chat_data = response.get("data")
+    # use for pdf making these three line
+    title = chat_data.get("title")
+    platform = chat_data.get("platform")
+    chat_url = chat_data.get("source_url")
 
     chunks = create_chunks(chat_data)
     chunk_data = chunks.get("chunks")
@@ -33,7 +38,9 @@ def submit_link(url: str):
     retrieval_data = retrieve_data(conversation_id)
 
 
-    result = openai_llm(retrieval_data)
+    final_data = openai_llm(retrieval_data)
+
+    result = generate_pdf(title=title, source_url=chat_url, platform = platform, final_data=final_data)
 
     return JSONResponse(
         status_code=201,

@@ -1,1 +1,11 @@
+# python
 __pychahe__/
+*.pyo
+
+# env
+.env
+.env.*
+venv/
+env/
+
+app/chroma_data/

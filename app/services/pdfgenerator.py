@@ -174,7 +174,7 @@ def generate_pdf(
 
     story.append(
         Paragraph(
-            "MEMORYEXPORTER",
+            "AI CHAT EXPORTER",
             main_title_style
         )
     )

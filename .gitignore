@@ -1,6 +1,8 @@
 # python
 __pychahe__/
 *.pyo
+*.py[cod]
+*/__pycache__
 
 # env
 .env

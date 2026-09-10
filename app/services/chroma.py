@@ -3,9 +3,8 @@ from pathlib import Path
 import json
 
 
-folder = "data8"
-embed_json = Path(__file__).parent.parent/"demo_data"/folder/"embed.json"
-chromapath = Path(__file__).parent.parent/"chroma_data"
+app_dir = Path(__file__).parent.parent
+chromapath = app_dir/"chroma_data"
 
 def add_chunks_to_chroma(data):
 

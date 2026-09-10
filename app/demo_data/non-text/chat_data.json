@@ -1,0 +1,75 @@
+{
+    "conversation_id": "6aa00a85-41b8-83ee-8289-e0ccdbd2e573",
+    "platform": "chatgpt",
+    "source_url": "https://chatgpt.com/share/6aa00a85-41b8-83ee-8289-e0ccdbd2e573",
+    "title": "Create flower image",
+    "scraped_at": "2026-09-08T13:58:13.804016+00:00",
+    "messages": [
+        {
+            "id": "ce978b6b-c090-4c1f-b0fa-3c23ce629b4e",
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "create a flower image"
+                }
+            ],
+            "timestamp": 1788873208.808
+        },
+        {
+            "id": "c7fd8e20-a03b-4685-8cfc-002abd2fcaeb",
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "give me flowchart of function to add number"
+                }
+            ],
+            "timestamp": 1788873255.341
+        },
+        {
+            "id": "ebfb2458-863d-43bb-b822-308d26819532",
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "give me flowchart of function to add number not in image just block"
+                }
+            ],
+            "timestamp": 1788873317.903
+        },
+        {
+            "id": "ef57bdfb-a85e-4acf-97cd-b9fb6595ab5b",
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "Sure. Here is a simple **flowchart for a function to add two numbers**:\n\n```text\n        ┌───────────────┐\n        │     START     │\n        └───────┬───────┘\n                ↓\n        ┌───────────────┐\n        │ Input A and B │\n        └───────┬───────┘\n                ↓\n        ┌───────────────┐\n        │  Sum = A + B  │\n        └───────┬───────┘\n                ↓\n        ┌───────────────┐\n        │  Return Sum   │\n        └───────┬───────┘\n                ↓\n        ┌───────────────┐\n        │      END      │\n        └───────────────┘\n```\n\n**Function:** `add(A, B) → Sum`"
+                }
+            ],
+            "timestamp": 1788873317.648038
+        },
+        {
+            "id": "b1e27507-c290-4646-8b16-c0e8f50ecb19",
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "give me code "
+                }
+            ],
+            "timestamp": 1788873330.489
+        },
+        {
+            "id": "48b1ca8d-2722-4e46-8b5a-d125044c790c",
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "If you mean the **code for the function that adds two numbers**, here is a simple Python version:\n\n```python\ndef add(a, b):\n    return a + b\n\nnum1 = int(input(\"Enter first number: \"))\nnum2 = int(input(\"Enter second number: \"))\n\nresult = add(num1, num2)\n\nprint(\"Sum =\", result)\n```\n\n**Example:**\n```text\nEnter first number: 10\nEnter second number: 20\nSum = 30\n```"
+                }
+            ],
+            "timestamp": 1788873330.236029
+        }
+    ]
+}

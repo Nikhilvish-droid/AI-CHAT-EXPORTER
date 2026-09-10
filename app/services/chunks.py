@@ -3,9 +3,11 @@ from pathlib import Path
 import json
 import re
 
-folder = "data8"
-chat = Path(__file__).parent.parent/"demo_data"/folder/"chat_data.json"
-chunks_file = Path(__file__).parent.parent/"demo_data"/folder/"chunks.json"
+app_dir = Path(__file__).parent.parent
+folder = "1"
+platform = "gemini"
+
+chunks_file = app_dir/"demo_data"/platform/folder/"chunks.json"
 
 
 def clean_embedtext(text:str):

@@ -2,10 +2,12 @@ from sentence_transformers import SentenceTransformer
 from pathlib import Path
 import json
 
-folder = "data8"
-chunks = Path(__file__).parent.parent/"demo_data"/folder/"chunks.json"
-embeddings = Path(__file__).parent.parent/"demo_data"/folder/"embed.json"
-docs_embed = Path(__file__).parent.parent/"demo_data"/folder/"docs_embed.json"
+folder = "1"
+app_dir = Path(__file__).parent.parent
+platform = "gemini"
+
+embeddings = app_dir/"demo_data"/platform/folder/"embed.json"
+docs_embed = app_dir/"demo_data"/platform/folder/"docs_embed.json"
 
 model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 

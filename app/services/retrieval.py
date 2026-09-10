@@ -5,10 +5,13 @@ from rank_bm25 import BM25Okapi
 import re
 # from sentence_transformers import CrossEncoder
 
-folder = "data8"
-docs_data = Path(__file__).parent.parent/"demo_data"/folder/"docs_embed.json"
-retrieved_file = Path(__file__).parent.parent/"demo_data"/folder/"retrieved_data.json"
-chroma_data = Path(__file__).parent.parent/"chroma_data"
+folder = "1"
+platform = "gemini"
+app_dir = Path(__file__).parent.parent
+
+docs_data = app_dir/"demo_data"/platform/folder/"docs_embed.json"
+retrieved_file = app_dir/"demo_data"/platform/folder/"retrieved_data.json"
+chroma_data = app_dir/"chroma_data"
 
 TOP_SEMANTIC = 15
 TOP_KEYWORD = 15

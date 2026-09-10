@@ -1,0 +1,202 @@
+{
+    "overview": [
+        {
+            "chunk_id": "chunk-001",
+            "text": "User: create a flower image assistant: give me flowchart of function to add number",
+            "metadata": {
+                "char_count": 87,
+                "source_message_ids": "ce978b6b-c090-4c1f-b0fa-3c23ce629b4e,c7fd8e20-a03b-4685-8cfc-002abd2fcaeb",
+                "roles_included": "user,assistant",
+                "type": "text",
+                "conversation_id": "6aa00a85-41b8-83ee-8289-e0ccdbd2e573",
+                "verbatim": false,
+                "order_index": 0
+            },
+            "semantic_score": 1.0,
+            "keyword_score": 0.05238343725464507,
+            "hybrid_score": 0.6683342030391258
+        },
+        {
+            "chunk_id": "chunk-002",
+            "text": "User: give me flowchart of function to add number not in image just block assistant: Sure. Here is a simple flowchart for a function to add two numbers: ```text ┌───────────────┐ │ START │ └───────┬───────┘ ↓ ┌───────────────┐ │ Input A and B │ └───────┬───────┘ ↓ ┌───────────────┐ │ Sum = A + B │ └───────┬───────┘ ↓ ┌───────────────┐ │ Return Sum │ └───────┬───────┘ ↓ ┌───────────────┐ │ END │ └───────────────┘ ``` Function: `add(A, B) → Sum`",
+            "metadata": {
+                "verbatim": false,
+                "conversation_id": "6aa00a85-41b8-83ee-8289-e0ccdbd2e573",
+                "char_count": 669,
+                "roles_included": "user,assistant",
+                "source_message_ids": "ebfb2458-863d-43bb-b822-308d26819532,ef57bdfb-a85e-4acf-97cd-b9fb6595ab5b",
+                "order_index": 1,
+                "type": "text"
+            },
+            "semantic_score": 0.10204502958126146,
+            "keyword_score": 1.0,
+            "hybrid_score": 0.41632926922781993
+        },
+        {
+            "chunk_id": "chunk-003",
+            "text": "User: give me code assistant: If you mean the code for the function that adds two numbers, here is a simple Python version: ```python def add(a, b): return a + b num1 = int(input(\"Enter first number: \")) num2 = int(input(\"Enter second number: \")) result = add(num1, num2) print(\"Sum =\", result) ``` Example: ```text Enter first number: 10 Enter second number: 20 Sum = 30 ```",
+            "metadata": {
+                "verbatim": false,
+                "roles_included": "user,assistant",
+                "order_index": 2,
+                "type": "text",
+                "conversation_id": "6aa00a85-41b8-83ee-8289-e0ccdbd2e573",
+                "source_message_ids": "b1e27507-c290-4646-8b16-c0e8f50ecb19,48b1ca8d-2722-4e46-8b5a-d125044c790c",
+                "char_count": 398
+            },
+            "semantic_score": 0.0,
+            "keyword_score": 0.0,
+            "hybrid_score": 0.0
+        }
+    ],
+    "key_decisions": [
+        {
+            "chunk_id": "chunk-001",
+            "text": "User: create a flower image assistant: give me flowchart of function to add number",
+            "metadata": {
+                "verbatim": false,
+                "type": "text",
+                "roles_included": "user,assistant",
+                "conversation_id": "6aa00a85-41b8-83ee-8289-e0ccdbd2e573",
+                "order_index": 0,
+                "source_message_ids": "ce978b6b-c090-4c1f-b0fa-3c23ce629b4e,c7fd8e20-a03b-4685-8cfc-002abd2fcaeb",
+                "char_count": 87
+            },
+            "semantic_score": 1.0,
+            "keyword_score": 1.0,
+            "hybrid_score": 1.0
+        },
+        {
+            "chunk_id": "chunk-003",
+            "text": "User: give me code assistant: If you mean the code for the function that adds two numbers, here is a simple Python version: ```python def add(a, b): return a + b num1 = int(input(\"Enter first number: \")) num2 = int(input(\"Enter second number: \")) result = add(num1, num2) print(\"Sum =\", result) ``` Example: ```text Enter first number: 10 Enter second number: 20 Sum = 30 ```",
+            "metadata": {
+                "order_index": 2,
+                "verbatim": false,
+                "roles_included": "user,assistant",
+                "type": "text",
+                "char_count": 398,
+                "source_message_ids": "b1e27507-c290-4646-8b16-c0e8f50ecb19,48b1ca8d-2722-4e46-8b5a-d125044c790c",
+                "conversation_id": "6aa00a85-41b8-83ee-8289-e0ccdbd2e573"
+            },
+            "semantic_score": 0.3822357412803277,
+            "keyword_score": 1.0,
+            "hybrid_score": 0.598453231832213
+        },
+        {
+            "chunk_id": "chunk-002",
+            "text": "User: give me flowchart of function to add number not in image just block assistant: Sure. Here is a simple flowchart for a function to add two numbers: ```text ┌───────────────┐ │ START │ └───────┬───────┘ ↓ ┌───────────────┐ │ Input A and B │ └───────┬───────┘ ↓ ┌───────────────┐ │ Sum = A + B │ └───────┬───────┘ ↓ ┌───────────────┐ │ Return Sum │ └───────┬───────┘ ↓ ┌───────────────┐ │ END │ └───────────────┘ ``` Function: `add(A, B) → Sum`",
+            "metadata": {
+                "verbatim": false,
+                "roles_included": "user,assistant",
+                "char_count": 669,
+                "order_index": 1,
+                "type": "text",
+                "source_message_ids": "ebfb2458-863d-43bb-b822-308d26819532,ef57bdfb-a85e-4acf-97cd-b9fb6595ab5b",
+                "conversation_id": "6aa00a85-41b8-83ee-8289-e0ccdbd2e573"
+            },
+            "semantic_score": 0.0,
+            "keyword_score": 1.0,
+            "hybrid_score": 0.35
+        }
+    ],
+    "problems_solutions": [
+        {
+            "chunk_id": "chunk-001",
+            "text": "User: create a flower image assistant: give me flowchart of function to add number",
+            "metadata": {
+                "conversation_id": "6aa00a85-41b8-83ee-8289-e0ccdbd2e573",
+                "verbatim": false,
+                "order_index": 0,
+                "type": "text",
+                "char_count": 87,
+                "roles_included": "user,assistant",
+                "source_message_ids": "ce978b6b-c090-4c1f-b0fa-3c23ce629b4e,c7fd8e20-a03b-4685-8cfc-002abd2fcaeb"
+            },
+            "semantic_score": 1.0,
+            "keyword_score": 1.0,
+            "hybrid_score": 1.0
+        },
+        {
+            "chunk_id": "chunk-003",
+            "text": "User: give me code assistant: If you mean the code for the function that adds two numbers, here is a simple Python version: ```python def add(a, b): return a + b num1 = int(input(\"Enter first number: \")) num2 = int(input(\"Enter second number: \")) result = add(num1, num2) print(\"Sum =\", result) ``` Example: ```text Enter first number: 10 Enter second number: 20 Sum = 30 ```",
+            "metadata": {
+                "type": "text",
+                "verbatim": false,
+                "order_index": 2,
+                "roles_included": "user,assistant",
+                "char_count": 398,
+                "conversation_id": "6aa00a85-41b8-83ee-8289-e0ccdbd2e573",
+                "source_message_ids": "b1e27507-c290-4646-8b16-c0e8f50ecb19,48b1ca8d-2722-4e46-8b5a-d125044c790c"
+            },
+            "semantic_score": 0.2013880692602833,
+            "keyword_score": 1.0,
+            "hybrid_score": 0.4809022450191841
+        },
+        {
+            "chunk_id": "chunk-002",
+            "text": "User: give me flowchart of function to add number not in image just block assistant: Sure. Here is a simple flowchart for a function to add two numbers: ```text ┌───────────────┐ │ START │ └───────┬───────┘ ↓ ┌───────────────┐ │ Input A and B │ └───────┬───────┘ ↓ ┌───────────────┐ │ Sum = A + B │ └───────┬───────┘ ↓ ┌───────────────┐ │ Return Sum │ └───────┬───────┘ ↓ ┌───────────────┐ │ END │ └───────────────┘ ``` Function: `add(A, B) → Sum`",
+            "metadata": {
+                "verbatim": false,
+                "source_message_ids": "ebfb2458-863d-43bb-b822-308d26819532,ef57bdfb-a85e-4acf-97cd-b9fb6595ab5b",
+                "char_count": 669,
+                "order_index": 1,
+                "type": "text",
+                "conversation_id": "6aa00a85-41b8-83ee-8289-e0ccdbd2e573",
+                "roles_included": "user,assistant"
+            },
+            "semantic_score": 0.0,
+            "keyword_score": 1.0,
+            "hybrid_score": 0.35
+        }
+    ],
+    "technical_details": [
+        {
+            "chunk_id": "chunk-003",
+            "text": "User: give me code assistant: If you mean the code for the function that adds two numbers, here is a simple Python version: ```python def add(a, b): return a + b num1 = int(input(\"Enter first number: \")) num2 = int(input(\"Enter second number: \")) result = add(num1, num2) print(\"Sum =\", result) ``` Example: ```text Enter first number: 10 Enter second number: 20 Sum = 30 ```",
+            "metadata": {
+                "source_message_ids": "b1e27507-c290-4646-8b16-c0e8f50ecb19,48b1ca8d-2722-4e46-8b5a-d125044c790c",
+                "verbatim": false,
+                "type": "text",
+                "order_index": 2,
+                "char_count": 398,
+                "conversation_id": "6aa00a85-41b8-83ee-8289-e0ccdbd2e573",
+                "roles_included": "user,assistant"
+            },
+            "semantic_score": 1.0,
+            "keyword_score": 1.0,
+            "hybrid_score": 1.0
+        },
+        {
+            "chunk_id": "chunk-001",
+            "text": "User: create a flower image assistant: give me flowchart of function to add number",
+            "metadata": {
+                "conversation_id": "6aa00a85-41b8-83ee-8289-e0ccdbd2e573",
+                "source_message_ids": "ce978b6b-c090-4c1f-b0fa-3c23ce629b4e,c7fd8e20-a03b-4685-8cfc-002abd2fcaeb",
+                "roles_included": "user,assistant",
+                "type": "text",
+                "order_index": 0,
+                "verbatim": false,
+                "char_count": 87
+            },
+            "semantic_score": 0.2637156944778207,
+            "keyword_score": 0.0,
+            "hybrid_score": 0.17141520141058345
+        },
+        {
+            "chunk_id": "chunk-002",
+            "text": "User: give me flowchart of function to add number not in image just block assistant: Sure. Here is a simple flowchart for a function to add two numbers: ```text ┌───────────────┐ │ START │ └───────┬───────┘ ↓ ┌───────────────┐ │ Input A and B │ └───────┬───────┘ ↓ ┌───────────────┐ │ Sum = A + B │ └───────┬───────┘ ↓ ┌───────────────┐ │ Return Sum │ └───────┬───────┘ ↓ ┌───────────────┐ │ END │ └───────────────┘ ``` Function: `add(A, B) → Sum`",
+            "metadata": {
+                "source_message_ids": "ebfb2458-863d-43bb-b822-308d26819532,ef57bdfb-a85e-4acf-97cd-b9fb6595ab5b",
+                "char_count": 669,
+                "roles_included": "user,assistant",
+                "conversation_id": "6aa00a85-41b8-83ee-8289-e0ccdbd2e573",
+                "type": "text",
+                "order_index": 1,
+                "verbatim": false
+            },
+            "semantic_score": 0.0,
+            "keyword_score": 0.0,
+            "hybrid_score": 0.0
+        }
+    ]
+}

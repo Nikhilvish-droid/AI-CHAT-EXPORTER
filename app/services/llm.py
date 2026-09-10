@@ -8,12 +8,13 @@ from groq import Groq
 
 load_dotenv()
 
-folder = "data8"
+folder = "1"
+platform = "gemini"
 
-basedir = Path(__file__).parent.parent
-retrieved_file = basedir/"demo_data"/folder/"retrieved_data.json"
-final_data = basedir/"demo_data"/folder/"final_data.json"
-prompt_file = basedir/"llm_prompt"/"prompt.txt"
+app_dir = Path(__file__).parent.parent
+final_data = app_dir/"demo_data"/platform/folder/"final_data.json"
+# retrieved_file = app_dir/"demo_data"/"chatgpt"/folder/"retrieved_data.json"
+# prompt_file = app_dir/"llm_prompt"/"prompt.txt"
 
 
 
@@ -27,13 +28,14 @@ def openai_llm( retrieved_data):
         make a data such that agent gets understand all the data and start working as a previous chat agent.
 
         You will receive RETRIEVED JSON containing conversation chunks grouped into exactly four topics:
-        1. overview
+        1. overview 
         2. key_decisions
         3. problems_solutions
         4. technical_details
         Your task is to transform ONLY the information contained in these retrieved chunks into a detailed, well-written document with exactly these same four sections.
         IMPORTANT:
         The retrieved chunks are the SOURCE OF TRUTH.
+        make sure length of the data you give is maximum 10-15 line and minimum depending on context present for every section max 10-15 but you can also add more line if you think half data is getting eliminated like code block or non-text part.
         Do NOT add information from your own knowledge.
         Do NOT make assumptions.
         Do NOT infer information that is not explicitly present.

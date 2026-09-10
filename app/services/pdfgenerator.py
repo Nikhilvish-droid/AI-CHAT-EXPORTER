@@ -216,7 +216,9 @@ def generate_pdf(
     conversation and maintain continuity where appropriate. Do not
     assume information that is not present in this document. If
     required information is missing, ask the user instead of inventing
-    or guessing it.
+    or guessing it.name chat as the title present in pdf if possible.
+    after understanding the pdf data send a response to user that 
+    ok i understand your past conservation and i will behave like old agent.
     """
 
     story.append(

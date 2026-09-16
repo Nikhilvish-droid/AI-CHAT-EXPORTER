@@ -1,14 +1,15 @@
 {
-    "conversation_id": "BbVnukg1YMHC",
+    "conversation_id": "oofEQZY5Kkft",
     "platform": "gemini",
-    "source_url": "https://share.gemini.google/BbVnukg1YMHC",
+    "source_url": "https://share.gemini.google/oofEQZY5Kkft",
     "title": "Anatomy of White Sauce Pasta",
-    "scraped_at": "2026-09-16T09:45:51.588505+00:00",
+    "scraped_at": "2026-09-16T15:39:07.739552+00:00",
     "has_assets": true,
     "assets_saved": 1,
+    "assets_skipped": 1,
     "messages": [
         {
-            "id": "7e52106d-b35e-4bc7-b54a-923aafe9b4d9",
+            "id": "d2a857ae-3000-40a7-94d9-fcde283b6a0f",
             "role": "user",
             "content": [
                 {
@@ -16,10 +17,10 @@
                     "text": "create anatomy of white sauce pasta"
                 }
             ],
-            "timestamp": 1789551951.584309
+            "timestamp": 1789573147.736948
         },
         {
-            "id": "4dfe28d4-0822-4000-992c-e73d13929c94",
+            "id": "2cc9d414-5222-4da6-b697-c4095bf45d84",
             "role": "assistant",
             "content": [
                 {
@@ -30,21 +31,25 @@
                     "type": "image",
                     "file_id": "0983c348015979c9b53fc6b1ed88c677",
                     "asset_pointer": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSWb7gyl6Sh0Qs-GhPK6zRESifjKglCn6E_rBIlkaQVA529tXDfnsPRrqg&s=10",
+                    "origin": "generated",
+                    "name": null,
                     "mime_type": "image/jpeg",
                     "size_bytes": 46539,
-                    "path": "demo_data\\gemini\\nontext-1\\assets\\BbVnukg1YMHC\\0983c348015979c9b53fc6b1ed88c677.jpg",
+                    "path": "demo_data\\gemini\\nontext-1\\assets\\oofEQZY5Kkft\\0983c348015979c9b53fc6b1ed88c677.jpg",
                     "url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSWb7gyl6Sh0Qs-GhPK6zRESifjKglCn6E_rBIlkaQVA529tXDfnsPRrqg&s=10",
                     "alt": "Creamy White Sauce Pasta, AI generated",
-                    "width": 554,
-                    "height": 554,
                     "title": "Creamy White Sauce Pasta, AI generated",
-                    "missing": false
+                    "embeddable": true,
+                    "skip_reason": null,
+                    "missing": false,
+                    "width": 554,
+                    "height": 554
                 }
             ],
-            "timestamp": 1789551952.584309
+            "timestamp": 1789573148.736948
         },
         {
-            "id": "5c702b46-1c2c-4c47-aee2-faa5aec81c61",
+            "id": "ec2e0297-5ae8-4eb6-b9a5-c4a88de280af",
             "role": "user",
             "content": [
                 {
@@ -52,29 +57,33 @@
                     "text": "create a flowchart of making this dish"
                 }
             ],
-            "timestamp": 1789551953.584309
+            "timestamp": 1789573149.736948
         },
         {
-            "id": "8263860c-0906-4605-9076-eb27b7bb0b53",
+            "id": "b1266374-abbf-4b14-866e-57039c88c746",
             "role": "assistant",
             "content": [
                 {
                     "type": "image",
-                    "file_id": "3c52e413cd6aa8152d1addd5b0a937d0",
-                    "asset_pointer": "blob:https://gemini.google.com/edb6c9fc-81ff-4076-87e8-32a4cfd7260d",
+                    "file_id": "cbf00fa078816418942f4cda09d5fa72",
+                    "asset_pointer": "blob:https://gemini.google.com/51cedca1-3532-4014-a8fb-cf03a6dc8a9d",
+                    "origin": "generated",
+                    "name": null,
                     "mime_type": null,
                     "size_bytes": null,
                     "path": null,
-                    "url": "blob:https://gemini.google.com/edb6c9fc-81ff-4076-87e8-32a4cfd7260d",
+                    "url": "blob:https://gemini.google.com/51cedca1-3532-4014-a8fb-cf03a6dc8a9d",
                     "alt": "A detailed illustrative infographic in the style of a flowchart, showing the process of making White Sauce Pasta. The flowchart has clear labels, colorful icons, and flows logically from top to bottom and left to right. The title at the top reads: 'HOW TO MAKE CREAMY WHITE SAUCE PASTA: A FLOWCHART GUIDE'. It begins with a 'START' oval. The first major branch is 'PREPARATION (PREP)', showing small icons for chopping vegetables (bell peppers, zucchini, mushrooms), preparing the roux ingredients, and getting the pasta (penne). This connects to two parallel paths. Path A is 'COOK PASTA', with steps: 'BOIL WATER (with salt)', 'ADD PASTA', 'COOK (8-10 mins)'. A decision diamond asks, 'PASTA *AL DENTE*?'. 'NO' arrow goes to 'COOK LONGER', 'YES' arrow goes to 'DRAIN PASTA (SAVE 1 CUP PASTA WATER)' and then to 'SET ASIDE'. Path B is 'PREPARE VEGGIES/PROTEIN', with steps: 'HEAT PAN (add butter/oil)', 'ADD VEGGIES (+ optionally chicken/mushrooms)', 'SAUTÉ (until tender)', 'SET ASIDE'. While A and B happen, Path C 'MAKE WHITE SAUCE (BÉCHAMEL)' begins: 'MELT BUTTER', 'ADD FLOUR (create roux)', a decision diamond, 'ROUX SMOOTH & SLIGHTLY GOLDEN?', with 'NO' loop to 'CONTINUE SAUTÉING', 'YES' arrow to 'GRADUALLY ADD MILK (whisking)', 'SIMMER & THICKEN', another decision diamond, 'SAUCE LUMPY?', with 'YES' arrow to 'WHISK VIGOROUSLY / USE IMMERSION BLENDER' and 'NO' arrow to 'ADD SEASONING (salt, pepper, oregano, chili flakes)'. Finally, all paths and branches converge to 'COMBINE & FINALISE': 'ADD COOKED PASTA & VEGGIES TO WHITE SAUCE', 'ADD CHEESE (Parmesan/Cheddar)', 'ADJUST CONSISTENCY (use saved pasta water for creaminess)', a final decision diamond, 'SAUCE COATING WELL?', 'NO' loop to 'SIMMER / ADD STARCHY WATER', 'YES' arrow to 'SERVE HOT! (Garnish with fresh herbs/chili)'. The flowchart ends with a large 'ENJOY!' oval and an illustration of a perfect bowl of pasta with white sauce, vegetables, and grated cheese, similar to image_agent_tag_902830184256997370. The entire visual is cohesive, informative, and uses food icons, arrows, and distinct sections with rounded corners., AI generated, AI generated",
                     "title": "A detailed illustrative infographic in the style of a flowchart, showing the process of making White Sauce Pasta. The flowchart has clear labels, colorful icons, and flows logically from top to bottom and left to right. The title at the top reads: 'HOW TO MAKE CREAMY WHITE SAUCE PASTA: A FLOWCHART GUIDE'. It begins with a 'START' oval. The first major branch is 'PREPARATION (PREP)', showing small icons for chopping vegetables (bell peppers, zucchini, mushrooms), preparing the roux ingredients, and getting the pasta (penne). This connects to two parallel paths. Path A is 'COOK PASTA', with steps: 'BOIL WATER (with salt)', 'ADD PASTA', 'COOK (8-10 mins)'. A decision diamond asks, 'PASTA *AL DENTE*?'. 'NO' arrow goes to 'COOK LONGER', 'YES' arrow goes to 'DRAIN PASTA (SAVE 1 CUP PASTA WATER)' and then to 'SET ASIDE'. Path B is 'PREPARE VEGGIES/PROTEIN', with steps: 'HEAT PAN (add butter/oil)', 'ADD VEGGIES (+ optionally chicken/mushrooms)', 'SAUTÉ (until tender)', 'SET ASIDE'. While A and B happen, Path C 'MAKE WHITE SAUCE (BÉCHAMEL)' begins: 'MELT BUTTER', 'ADD FLOUR (create roux)', a decision diamond, 'ROUX SMOOTH & SLIGHTLY GOLDEN?', with 'NO' loop to 'CONTINUE SAUTÉING', 'YES' arrow to 'GRADUALLY ADD MILK (whisking)', 'SIMMER & THICKEN', another decision diamond, 'SAUCE LUMPY?', with 'YES' arrow to 'WHISK VIGOROUSLY / USE IMMERSION BLENDER' and 'NO' arrow to 'ADD SEASONING (salt, pepper, oregano, chili flakes)'. Finally, all paths and branches converge to 'COMBINE & FINALISE': 'ADD COOKED PASTA & VEGGIES TO WHITE SAUCE', 'ADD CHEESE (Parmesan/Cheddar)', 'ADJUST CONSISTENCY (use saved pasta water for creaminess)', a final decision diamond, 'SAUCE COATING WELL?', 'NO' loop to 'SIMMER / ADD STARCHY WATER', 'YES' arrow to 'SERVE HOT! (Garnish with fresh herbs/chili)'. The flowchart ends with a large 'ENJOY!' oval and an illustration of a perfect bowl of pasta with white sauce, vegetables, and grated cheese, similar to image_agent_tag_902830184256997370. The entire visual is cohesive, informative, and uses food icons, arrows, and distinct sections with rounded corners., AI generated, AI generated",
+                    "embeddable": false,
+                    "skip_reason": "not_embeddable",
                     "missing": true
                 }
             ],
-            "timestamp": 1789551954.584309
+            "timestamp": 1789573150.736948
         },
         {
-            "id": "3fb2afb6-3c39-4286-8142-70d0183ec5fa",
+            "id": "e16e3277-9795-4a8b-ba1e-36edd770ae67",
             "role": "user",
             "content": [
                 {
@@ -82,10 +91,10 @@
                     "text": "not image just flowchart"
                 }
             ],
-            "timestamp": 1789551955.584309
+            "timestamp": 1789573151.736948
         },
         {
-            "id": "0a533802-1efb-4a58-8e43-ac689b3290ef",
+            "id": "6e471acf-0cc7-41d6-950d-534cb41d758d",
             "role": "assistant",
             "content": [
                 {
@@ -93,7 +102,7 @@
                     "text": "A foolproof white sauce pasta is made through a controlled sequence where the roux thickens the milk, and the starch from the pasta water perfectly binds everything together.\nHere is the flowchart of the creation process:\nSTART: Ingredients Prepared\nPrep:\nMeasure butter, flour, milk. Sauté texture elements (veg/chicken). Boil pasta\nal dente\n(SAVE PASTA WATER).\n⬇️\nSTEP 1: Create the Roux\nAction:\nMelt butter in a large pan over medium heat. Whisk in flour.\nDuration:\nCook 1–2 minutes, stirring constantly, until roux is golden and nutty smelling.\n⬇️\nSTEP 2: Build the Béchamel (The White Sauce)\nAction:\nGRADUALLY pour in cold milk while\nwhisking vigorously\nto prevent lumps.\nCheck:\nKeep whisking until the mixture is smooth, begins to bubble slightly, and thickens enough to coat the back of a spoon (approx. 5-7 mins).\n⬇️\nSTEP 3: Add the Flavor Matrix\nAction:\nAdd sautéed garlic (if used), dried oregano, chili flakes, black pepper, and salt to taste.\nCheck:\nTaste the sauce base now and adjust seasoning if needed.\n⬇️\nSTEP 4: Assemble the Components\nAction:\nAdd the drained, cooked pasta and any prepared sautéed veggies/chicken directly into the sauce. Toss gently to combine.\n⬇️\nSTEP 5: Emulsify and Adjust Consistency\nAction:\nPour in a small splash of the reserved\nstarchy pasta water.\nDecision:\nIf sauce is too thick, add more pasta water, 1 tbsp at a time.\nAction:\nAdd grated Parmesan/Cheddar cheese. Stir until melted and glossy.\n⬇️\nFINISH: Serve Hot\nCheck:\nThe sauce should look velvety and cling to the pasta. Serve immediately, topped with extra cracked pepper."
                 }
             ],
-            "timestamp": 1789551956.584309
+            "timestamp": 1789573152.736948
         }
     ]
 }

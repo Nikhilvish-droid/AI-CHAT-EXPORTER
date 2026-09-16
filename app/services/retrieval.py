@@ -7,6 +7,12 @@ from app.services.chroma import get_client, collection_name
 TOP_SEMANTIC = 15
 TOP_KEYWORD = 15
 TOP_CANDIDATES = 10
+
+# How many chunks are handed to the LLM per section. This is the single knob
+# for retrieval depth. Raising it gives the document more source material, but
+# the prompt still has to fit CONTEXT_TOKEN_LIMIT in app/services/llm.py, which
+# trims the lowest-ranked chunks when the budget runs out - so raising this
+# past what the budget allows has no effect.
 FINAL_TOP_K = 5
 
 SEMANTIC_WEIGHT = 0.65

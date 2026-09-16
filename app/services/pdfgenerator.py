@@ -31,7 +31,17 @@ OUTPUT_FILE = BASE_DIR / "output" / "memory_export.pdf"
 
 PAGE_WIDTH = A4[0]
 MARGIN = 20 * mm
-CONTENT_WIDTH = PAGE_WIDTH - (2 * MARGIN)
+# SimpleDocTemplate pads its frame by 6pt on each side, so the drawable width
+# is narrower than the margin box. Ignoring that padding makes every full-width
+# table 12pt too wide for its frame.
+FRAME_PADDING = 6
+
+CONTENT_WIDTH = PAGE_WIDTH - (2 * MARGIN) - (2 * FRAME_PADDING)
+
+# A table row cannot be split across pages unless the row itself is splittable,
+# so text placed in a cell is capped. A long asset title (an image-generation
+# prompt, say) would otherwise build one row taller than the whole page.
+MAX_CELL_CHARS = 300
 
 MAX_IMAGE_WIDTH = 150 * mm
 MAX_IMAGE_HEIGHT = 185 * mm
@@ -492,7 +502,9 @@ def render_table(block, styles):
     data = [[Paragraph(inline_markup(cell), styles["body"]) for cell in row] for row in rows]
     col_width = CONTENT_WIDTH / width
 
-    table = Table(data, colWidths=[col_width] * width, repeatRows=1)
+    # splitInRow lets a tall row break across pages instead of raising
+    # LayoutError; conversation tables are not truncated to make them fit.
+    table = Table(data, colWidths=[col_width] * width, repeatRows=1, splitInRow=1)
 
     table.setStyle(
         TableStyle([
@@ -680,7 +692,7 @@ def image_grid(embedded, base_dir, styles, columns=2):
 
         cells.append([
             flowable,
-            Paragraph(escape(assetlib.describe(entry)), styles["caption"]),
+            Paragraph(escape(clip_cell(assetlib.describe(entry))), styles["caption"]),
         ])
 
     if not cells:
@@ -697,6 +709,7 @@ def image_grid(embedded, base_dir, styles, columns=2):
         rows,
         colWidths=[cell_width] * columns,
         hAlign="LEFT",
+        splitInRow=1,
     )
 
     table.setStyle(
@@ -812,6 +825,17 @@ def details_table(title, source_url, platform, generated_at):
     return table
 
 
+def clip_cell(text, limit=MAX_CELL_CHARS):
+    """Keep a table cell short enough that its row still fits on a page."""
+
+    text = str(text or "")
+
+    if len(text) <= limit:
+        return text
+
+    return text[:limit].rstrip() + "..."
+
+
 def missing_table(missing, styles):
     cell = ParagraphStyle(
         "MissingCell",
@@ -837,8 +861,8 @@ def missing_table(missing, styles):
             label += " (uploaded by the user)"
 
         rows.append([
-            Paragraph(escape(assetlib.describe(entry)), cell),
-            Paragraph(escape(str(entry.get("mime_type") or "unknown")), cell),
+            Paragraph(escape(clip_cell(assetlib.describe(entry))), cell),
+            Paragraph(escape(clip_cell(entry.get("mime_type") or "unknown")), cell),
             Paragraph(label, cell),
         ])
 
@@ -846,6 +870,7 @@ def missing_table(missing, styles):
         rows,
         colWidths=[55 * mm, 40 * mm, CONTENT_WIDTH - 95 * mm],
         repeatRows=1,
+        splitInRow=1,
     )
 
     table.setStyle(

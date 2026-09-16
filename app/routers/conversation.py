@@ -32,6 +32,7 @@ ALLOWED_HOSTS = {
     "chatgpt.com": ("chatgpt", load_chatgpt_chat),
     "chat.openai.com": ("chatgpt", load_chatgpt_chat),
     "gemini.google.com": ("gemini", load_gemini_chat),
+    "share.gemini.google": ("gemini", load_gemini_chat),
     "g.co": ("gemini", load_gemini_chat),
     "claude.ai": ("claude", load_claude_chat),
 }

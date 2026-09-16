@@ -8,7 +8,7 @@ from curl_cffi import requests as cffi_requests
 
 from app.services import assets as assetlib
 
-folder = "nontext-1"
+folder = "nontext-2"
 app_dir = Path(__file__).parent.parent.parent
 platform = "chatgpt"
 
@@ -20,6 +20,12 @@ decoded_json = app_dir/"demo_data"/platform/folder/"decoded.txt"
 assets_dir = app_dir/"demo_data"/platform/folder/"assets"
 
 KEEP_CONTENT_TYPES = {"text", "multimodal_text"}
+
+ENQUEUE_MARKER = "streamController.enqueue("
+
+# Cloudflare stalls older browser fingerprints, so try newer ones first and
+# fall back instead of failing the whole request on one stale profile.
+IMPERSONATE_PROFILES = ("chrome131", "firefox", "chrome124")
 
 ASSET_PART_TYPES = {
     "image_asset_pointer": "image",
@@ -37,30 +43,50 @@ def _fail(message: str):
     return {"ok": False, "message": message}
 
 
+def dump_debug(path, text):
+    """Write a debug copy of an intermediate step.
+
+    These files are only for inspection, so a missing folder or a read-only
+    disk must never abort a scrape that is otherwise working.
+    """
+
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(path, "w", encoding="utf-8") as file:
+            file.write(text)
+    except Exception:
+        pass
+
+
 def html_fetcher(url: str):
-    try:
-        r = cffi_requests.get(url, impersonate="chrome124", timeout=20)
-    except Exception as e:
-        return _fail(f"html_fetcher: request failed: {e}")
+    problem = "no browser profile accepted"
 
-    if r.status_code != 200:
-        return _fail(f"html_fetcher: HTTP {r.status_code} for URL {url}")
+    for profile in IMPERSONATE_PROFILES:
+        try:
+            r = cffi_requests.get(url, impersonate=profile, timeout=20)
+        except Exception as e:
+            problem = f"request failed as {profile}: {e}"
+            continue
 
-    try:
-        html = r.content.decode("utf-8")
-    except UnicodeDecodeError:
-        html = r.content.decode("utf-8", errors="replace")
+        if r.status_code != 200:
+            problem = f"HTTP {r.status_code} for URL {url} as {profile}"
+            continue
 
-    if not html.strip():
-        return _fail("html_fetcher: empty html returned")
+        try:
+            html = r.content.decode("utf-8")
+        except UnicodeDecodeError:
+            html = r.content.decode("utf-8", errors="replace")
 
-    try:
-        with open(html_file, "w", encoding="utf-8") as file:
-            file.write(html)
-    except Exception as e:
-        return _fail(f"html_fetcher: could not write html file: {e}")
+        if not html.strip():
+            problem = f"empty html returned as {profile}"
+            continue
 
-    return _ok(html)
+        dump_debug(html_file, html)
+
+        return _ok(html)
+
+    return _fail(f"html_fetcher: {problem}")
 
 
 def script_parser(html_data):
@@ -71,71 +97,131 @@ def script_parser(html_data):
 
     try:
         soup = BeautifulSoup(html_data, 'html.parser')
-        scripts = soup.find_all("script")
-        for script in scripts:
-            text = script.get_text()
-            if "streamController.enqueue" in text:
-                with open(script_file, 'w', encoding="utf-8") as file:
-                    file.write(text)
-                return _ok(text)
+
+        # The share page streams its data as several enqueue() calls, and they
+        # are not always in the same script tag, so keep every one of them.
+        scripts = [
+            text
+            for text in (script.get_text() for script in soup.find_all("script"))
+            if ENQUEUE_MARKER in text
+        ]
     except Exception as e:
         return _fail(f"script_parser: failed to parse html: {e}")
 
-    return _fail("script_parser: streamController.enqueue script not found")
+    if not scripts:
+        return _fail("script_parser: streamController.enqueue script not found")
+
+    dump_debug(script_file, "\n".join(scripts))
+
+    return _ok(scripts)
+
+
+def read_js_string(script, index):
+    """Read one quoted JS string starting at or after ``index``.
+
+    Returns (decoded_text, position_after_the_string). Escapes are skipped two
+    characters at a time so an escaped backslash right before the closing quote
+    (``"...\\\\"``) does not end the string early.
+    """
+
+    while index < len(script) and script[index].isspace():
+        index += 1
+
+    if index >= len(script) or script[index] not in ("'", '"', "`"):
+        return None, index
+
+    quote = script[index]
+    body_start = index + 1
+    i = body_start
+
+    while i < len(script):
+        char = script[i]
+
+        if char == "\\":
+            i += 2
+            continue
+
+        if char == quote:
+            return unescape_js_string(script[body_start:i], quote), i + 1
+
+        i += 1
+
+    return None, len(script)
+
+
+def enqueue_chunks(scripts):
+    """Collect the argument of every streamController.enqueue() call, in order."""
+
+    chunks = []
+
+    for script in scripts:
+        position = 0
+
+        while True:
+            found = script.find(ENQUEUE_MARKER, position)
+
+            if found == -1:
+                break
+
+            text, position = read_js_string(script, found + len(ENQUEUE_MARKER))
+
+            if position <= found:
+                position = found + len(ENQUEUE_MARKER)
+
+            if text and text.strip():
+                chunks.append(text)
+
+    return chunks
+
+
+def parse_chunk(chunk):
+    """Parse one enqueue chunk into the JSON list it carries, if it carries one.
+
+    Chunks can be prefixed with a stream id such as ``P627:`` before the JSON.
+    """
+
+    start = chunk.find("[")
+
+    if start == -1:
+        return None
+
+    try:
+        data = json.loads(chunk[start:])
+    except (json.JSONDecodeError, ValueError):
+        return None
+
+    return data if isinstance(data, list) and data else None
 
 
 # extracting payload from script
-def extract_payload(script):
-    # with open(script_file, "r", encoding="utf-8") as file:
-    #     script = file.read()
-    if not isinstance(script, str) or not script:
+def extract_payload(scripts):
+    if isinstance(scripts, str):
+        scripts = [scripts]
+
+    if not isinstance(scripts, list) or not scripts:
         return _fail("extract_payload: invalid script")
 
-    marker = "streamController.enqueue("
-    
-    start = script.find(marker)
+    chunks = enqueue_chunks(scripts)
 
-    if start == -1:
-        return _fail("extract_payload: enqueue not found")
+    if not chunks:
+        return _fail("extract_payload: enqueue payload not found")
 
-    # Find the first quote after enqueue(
-    quote_start = start + len(marker)
+    dump_debug(enqueue, "\n".join(chunks))
 
-    while quote_start < len(script) and script[quote_start].isspace():
-        quote_start += 1
+    candidates = [data for data in (parse_chunk(chunk) for chunk in chunks) if data]
 
-    quote = script[quote_start]
+    # Long conversations can be split across several enqueue calls, so fall back
+    # to reading them as one concatenated payload.
+    if not candidates:
+        joined = parse_chunk("".join(chunks))
 
-    if quote not in ["'", '"']:
-        return _fail("extract_payload: opening quote not found")
+        if joined:
+            candidates = [joined]
 
-    payload_start = quote_start + 1
+    if not candidates:
+        return _fail("extract_payload: payload JSON parse failed")
 
-    # Find the matching closing quote
-    i = payload_start
-
-    while i < len(script):
-        if script[i] == quote and script[i - 1] != "\\":
-            break
-        i += 1
-
-    if i >= len(script):
-        return _fail("extract_payload: closing quote not found")
-
-    payload = script[payload_start:i]
-
-    if not payload:
-        return _fail("extract_payload: payload empty")
-
-    payload = unescape_js_string(payload, quote)
-
-    with open(enqueue, "w", encoding="utf-8") as file:
-        file.write(payload)
-
-    if not payload.strip():
-        return _fail("extract_payload: payload extracted but empty")
-
-    return _ok(payload)
+    return _ok(candidates)
 
 
 
@@ -587,26 +673,36 @@ def load_chatgpt_chat(url):
     script_res = script_parser(html)
     if not script_res.get("ok"):
         return {"ok": False, "message": script_res.get("message", "script_parser failed")}
-    script = script_res["value"]
+    scripts = script_res["value"]
 
-    payload_res = extract_payload(script)
+    payload_res = extract_payload(scripts)
     if not payload_res.get("ok"):
         return {"ok": False, "message": payload_res.get("message", "extract_payload failed")}
-    payload = payload_res["value"]
 
-    try:
-        payload_data = json.loads(payload)
-    except Exception as e:
-        return {"ok": False, "message": f"chat_scraper: payload JSON parse failed: {e}"}
+    # Only one of the enqueue chunks carries the conversation; the others are
+    # routing or streaming noise, so take the first that decodes into one.
+    conv_res = None
 
-    decoded_res = decode(payload_data)
-    if not decoded_res.get("ok"):
-        return {"ok": False, "message": decoded_res.get("message", "decode failed")}
-    decoded = decoded_res["value"]
+    for payload_data in payload_res["value"]:
+        decoded_res = decode(payload_data)
 
-    conv_res = get_conversation_data(decoded)
-    if not conv_res.get("ok"):
-        return {"ok": False, "message": conv_res.get("message", "get_conversation_data failed")}
+        if not decoded_res.get("ok"):
+            continue
+
+        attempt = get_conversation_data(decoded_res["value"])
+
+        if attempt.get("ok"):
+            conv_res = attempt
+            break
+
+        conv_res = conv_res or attempt
+
+    if not conv_res or not conv_res.get("ok"):
+        return {
+            "ok": False,
+            "message": (conv_res or {}).get("message", "get_conversation_data failed"),
+        }
+
     conversation_id, title, mapping = conv_res["value"]
 
     messages_res = get_messages(mapping)
@@ -640,9 +736,6 @@ def load_chatgpt_chat(url):
         "messages":messages
     }
 
-    chat_json.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(chat_json, 'w', encoding="utf-8") as file:
-        json.dump(result, file, indent=4, ensure_ascii=False)
+    dump_debug(chat_json, json.dumps(result, indent=4, ensure_ascii=False))
 
     return {"data": result, "ok": True}

@@ -22,6 +22,10 @@ assets_dir = app_dir / "demo_data" / platform / folder / "assets"
 
 TURN_SELECTOR = "share-turn-viewer"
 
+CODE_BLOCK_SELECTORS = ("code-block", "ms-code-block", "pre")
+
+LANGUAGE_PATTERN = re.compile(r"[^a-z0-9+#._-]")
+
 ASSET_SELECTOR = (
     "share-turn-viewer img[src], "
     "share-turn-viewer source[srcset], "
@@ -201,11 +205,77 @@ def _extract_user_text(user_elem) -> str:
     return target.get_text(separator="\n", strip=True)
 
 
+def _code_language(node) -> str:
+    """Best-effort language label for a Gemini code block."""
+
+    candidates = []
+
+    code_elem = node.find("code") if node.name != "code" else node
+
+    for elem in (node, code_elem):
+        if elem is None:
+            continue
+
+        candidates.append(elem.get("data-language") or elem.get("language") or "")
+
+        for css_class in elem.get("class") or []:
+            if css_class.startswith("language-"):
+                candidates.append(css_class[len("language-"):])
+
+    header = node.find(
+        ["div", "span"],
+        class_=lambda value: bool(value) and "code-block-decoration" in " ".join(
+            value if isinstance(value, list) else [value]
+        ),
+    )
+
+    if header is not None:
+        candidates.append(header.get_text(strip=True))
+
+    for candidate in candidates:
+        language = LANGUAGE_PATTERN.sub("", str(candidate).strip().lower())
+
+        if language and language != "code":
+            return language
+
+    return ""
+
+
+def _replace_code_blocks(container):
+    """Turn rendered code blocks back into fenced markdown.
+
+    Gemini renders code as a tree of highlighted spans. Reading it with
+    get_text(separator="\\n") would put every token on its own line and lose the
+    language, so the downstream code-block extractor would never see it. Fencing
+    the block here keeps it intact and verbatim in the exported PDF.
+    """
+
+    for selector in CODE_BLOCK_SELECTORS:
+        for node in container.find_all(selector):
+            # A <pre> nested inside an already handled <code-block> is gone by now.
+            if node.parent is None:
+                continue
+
+            code_elem = node.find("code") or node
+            code = code_elem.get_text()
+
+            if not code.strip():
+                node.decompose()
+                continue
+
+            language = _code_language(node)
+            fenced = "\n```%s\n%s\n```\n" % (language, code.strip("\n").rstrip())
+
+            node.replace_with(fenced)
+
+
 def _extract_model_text(md_container) -> str:
     for tag in md_container.find_all(
         ["button", "gem-icon-button", "elicitations", "table-footer"]
     ):
         tag.decompose()
+
+    _replace_code_blocks(md_container)
 
     for table in md_container.find_all("table"):
         formatted = _format_table(table)
@@ -464,15 +534,15 @@ def load_gemini_chat(url):
         "messages": messages,
     }
 
+    # Debug copy only - a failed write must not discard a conversation we have.
     try:
         chat.parent.mkdir(parents=True, exist_ok=True)
 
         with open(chat, "w", encoding="utf-8") as f:
             json.dump(result, f, indent=4, ensure_ascii=False)
-    except Exception as e:
-        return {"ok": False, "message": f"load_gemini_chat: could not write chat file: {e}"}
+    except Exception:
+        pass
 
-    print("done")
     return {"ok": True, "data": result}
 
 

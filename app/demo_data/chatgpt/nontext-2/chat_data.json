@@ -1,0 +1,103 @@
+{
+    "conversation_id": "6aa00a85-41b8-83ee-8289-e0ccdbd2e573",
+    "platform": "chatgpt",
+    "source_url": "https://chatgpt.com/share/6aa00a85-41b8-83ee-8289-e0ccdbd2e573",
+    "title": "Create flower image",
+    "scraped_at": "2026-09-16T15:27:20.803879+00:00",
+    "has_assets": true,
+    "assets_saved": 1,
+    "assets_skipped": 0,
+    "messages": [
+        {
+            "id": "ce978b6b-c090-4c1f-b0fa-3c23ce629b4e",
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "create a flower image"
+                }
+            ],
+            "timestamp": 1788873208.808
+        },
+        {
+            "id": "c76b775f-4885-4343-8ad7-09c45106291e",
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "image",
+                    "file_id": "00000000302482119d97db69f6baa8e4",
+                    "asset_pointer": "sediment://file_00000000302482119d97db69f6baa8e4?shared_conversation_id=6aa00a85-41b8-83ee-8289-e0ccdbd2e573",
+                    "origin": "generated",
+                    "name": null,
+                    "mime_type": "image/png",
+                    "size_bytes": 1899940,
+                    "path": "demo_data\\chatgpt\\nontext-2\\assets\\6aa00a85-41b8-83ee-8289-e0ccdbd2e573\\00000000302482119d97db69f6baa8e4.png",
+                    "url": "https://sdmntprindiasocentral.oaiusercontent.com/files/00000000-3024-8211-9d97-db69f6baa8e4/raw?se=2026-09-16T15%3A32%3A13Z&sp=r&sv=2026-02-06&sr=b&scid=ad665d02-8b6c-4b31-9f65-a75bd2fda82a&skoid=54865dd2-31dc-44cc-a877-635aa4250446&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-16T02%3A56%3A54Z&ske=2026-09-17T02%3A56%3A54Z&sks=b&skv=2026-02-06&sig=gItmL5BrWoWQ/6Hagq9CrD2mg/iRiXgakdSlj52Y9fM%3D",
+                    "alt": "Generated image: Daisy Bloom in Soft Garden Light",
+                    "title": "Daisy Bloom in Soft Garden Light",
+                    "embeddable": true,
+                    "skip_reason": null,
+                    "missing": false,
+                    "width": 1254,
+                    "height": 1254
+                }
+            ],
+            "timestamp": 1788873243.005006
+        },
+        {
+            "id": "c7fd8e20-a03b-4685-8cfc-002abd2fcaeb",
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "give me flowchart of function to add number"
+                }
+            ],
+            "timestamp": 1788873255.341
+        },
+        {
+            "id": "ebfb2458-863d-43bb-b822-308d26819532",
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "give me flowchart of function to add number not in image just block"
+                }
+            ],
+            "timestamp": 1788873317.903
+        },
+        {
+            "id": "ef57bdfb-a85e-4acf-97cd-b9fb6595ab5b",
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "Sure. Here is a simple **flowchart for a function to add two numbers**:\n\n```text\n        ┌───────────────┐\n        │     START     │\n        └───────┬───────┘\n                ↓\n        ┌───────────────┐\n        │ Input A and B │\n        └───────┬───────┘\n                ↓\n        ┌───────────────┐\n        │  Sum = A + B  │\n        └───────┬───────┘\n                ↓\n        ┌───────────────┐\n        │  Return Sum   │\n        └───────┬───────┘\n                ↓\n        ┌───────────────┐\n        │      END      │\n        └───────────────┘\n```\n\n**Function:** `add(A, B) → Sum`"
+                }
+            ],
+            "timestamp": 1788873317.648038
+        },
+        {
+            "id": "b1e27507-c290-4646-8b16-c0e8f50ecb19",
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "give me code"
+                }
+            ],
+            "timestamp": 1788873330.489
+        },
+        {
+            "id": "48b1ca8d-2722-4e46-8b5a-d125044c790c",
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "If you mean the **code for the function that adds two numbers**, here is a simple Python version:\n\n```python\ndef add(a, b):\n    return a + b\n\nnum1 = int(input(\"Enter first number: \"))\nnum2 = int(input(\"Enter second number: \"))\n\nresult = add(num1, num2)\n\nprint(\"Sum =\", result)\n```\n\n**Example:**\n```text\nEnter first number: 10\nEnter second number: 20\nSum = 30\n```"
+                }
+            ],
+            "timestamp": 1788873330.236029
+        }
+    ]
+}

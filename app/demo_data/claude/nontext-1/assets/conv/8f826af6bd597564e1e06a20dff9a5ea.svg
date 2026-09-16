@@ -1,0 +1,69 @@
+<svg width="100%" viewBox="0 0 680 480" role="img">
+<title>Anatomy of a burger</title>
+<desc>Cross-section of a burger showing, from top to bottom, the top bun, sesame seeds, lettuce, tomato, cheese, patty, onion, and bottom bun.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+
+<!-- Top bun -->
+<path d="M180 60 Q180 20 340 18 Q500 20 500 60 L500 92 L180 92 Z" fill="#E8B15A"/>
+<path d="M180 60 Q180 20 340 18 Q500 20 500 60 L500 92 L180 92 Z" fill="none" stroke="#8C5A22" stroke-width="1"/>
+<!-- sesame seeds -->
+<ellipse cx="230" cy="45" rx="5" ry="3" fill="#FBEFD6"/>
+<ellipse cx="270" cy="32" rx="5" ry="3" fill="#FBEFD6"/>
+<ellipse cx="320" cy="26" rx="5" ry="3" fill="#FBEFD6"/>
+<ellipse cx="370" cy="28" rx="5" ry="3" fill="#FBEFD6"/>
+<ellipse cx="415" cy="38" rx="5" ry="3" fill="#FBEFD6"/>
+<ellipse cx="450" cy="52" rx="5" ry="3" fill="#FBEFD6"/>
+
+<!-- Lettuce -->
+<path d="M175 92 Q200 78 225 92 Q250 78 275 92 Q300 78 325 92 Q350 78 375 92 Q400 78 425 92 Q450 78 475 92 Q495 84 505 92 L505 112 L175 112 Z" fill="#6FA83A"/>
+
+<!-- Tomato -->
+<rect x="180" y="112" width="320" height="18" rx="4" fill="#D5453A"/>
+
+<!-- Cheese (drapes with drips) -->
+<path d="M175 130 L505 130 L505 150 Q480 168 460 150 Q440 168 420 150 Q400 168 380 150 Q360 168 340 150 Q320 168 300 150 Q280 168 260 150 Q240 168 220 150 Q200 168 180 150 Z" fill="#F2B531"/>
+
+<!-- Patty -->
+<rect x="170" y="168" width="340" height="46" rx="10" fill="#6E4326"/>
+<rect x="170" y="168" width="340" height="46" rx="10" fill="none" stroke="#4A2C17" stroke-width="1"/>
+
+<!-- Onion rings -->
+<ellipse cx="230" cy="222" rx="16" ry="7" fill="none" stroke="#C9A2D6" stroke-width="4"/>
+<ellipse cx="290" cy="224" rx="16" ry="7" fill="none" stroke="#C9A2D6" stroke-width="4"/>
+<ellipse cx="400" cy="222" rx="16" ry="7" fill="none" stroke="#C9A2D6" stroke-width="4"/>
+<ellipse cx="450" cy="224" rx="16" ry="7" fill="none" stroke="#C9A2D6" stroke-width="4"/>
+<rect x="175" y="216" width="330" height="16" fill="#F4E9D8" opacity="0"/>
+
+<!-- Bottom bun -->
+<path d="M175 236 Q175 260 340 262 Q505 260 505 236 L505 236 Q505 210 480 210 L200 210 Q175 210 175 236 Z" fill="#D89A4B"/>
+<path d="M175 236 Q175 260 340 262 Q505 260 505 236 L505 210 L175 210 Z" fill="#D89A4B" stroke="#8C5A22" stroke-width="1"/>
+
+<!-- Labels (right margin) -->
+<g class="node" onclick="sendPrompt('What kind of bun is typically used for a burger?')">
+<line class="leader" x1="500" y1="45" x2="560" y2="45"/><circle cx="500" cy="45" r="2" fill="var(--t)"/>
+<text class="ts" x="566" y="49">Top bun (sesame)</text></g>
+
+<g class="node" onclick="sendPrompt('Why is lettuce added to a burger?')">
+<line class="leader" x1="500" y1="100" x2="560" y2="100"/><circle cx="500" cy="100" r="2" fill="var(--t)"/>
+<text class="ts" x="566" y="104">Lettuce</text></g>
+
+<g class="node" onclick="sendPrompt('What role does tomato play in a burger?')">
+<line class="leader" x1="500" y1="120" x2="560" y2="130"/><circle cx="500" cy="120" r="2" fill="var(--t)"/>
+<text class="ts" x="566" y="134">Tomato slice</text></g>
+
+<g class="node" onclick="sendPrompt('Why does cheese melt over a hot patty?')">
+<line class="leader" x1="500" y1="145" x2="560" y2="160"/><circle cx="500" cy="145" r="2" fill="var(--t)"/>
+<text class="ts" x="566" y="164">Melted cheese</text></g>
+
+<g class="node" onclick="sendPrompt('What makes a good burger patty?')">
+<line class="leader" x1="500" y1="190" x2="560" y2="195"/><circle cx="500" cy="190" r="2" fill="var(--t)"/>
+<text class="ts" x="566" y="199">Patty</text></g>
+
+<g class="node" onclick="sendPrompt('Why do people add raw onion to burgers?')">
+<line class="leader" x1="450" y1="222" x2="560" y2="228"/><circle cx="450" cy="222" r="2" fill="var(--t)"/>
+<text class="ts" x="566" y="232">Onion rings</text></g>
+
+<g class="node" onclick="sendPrompt('What is the bottom bun designed to do?')">
+<line class="leader" x1="480" y1="240" x2="560" y2="255"/><circle cx="480" cy="240" r="2" fill="var(--t)"/>
+<text class="ts" x="566" y="259">Bottom bun</text></g>
+</svg>

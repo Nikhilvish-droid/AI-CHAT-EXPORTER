@@ -1,16 +1,11 @@
-import json
-from pathlib import Path
-import json
 import re
 
-app_dir = Path(__file__).parent.parent
-folder = "1"
-platform = "gemini"
 
-chunks_file = app_dir/"demo_data"/platform/folder/"chunks.json"
+MAX_CHARS = 1000
+OVERLAP = 100
 
 
-def clean_embedtext(text:str):
+def clean_embedtext(text: str):
     text = re.sub(r"\*\*", "", text)
     text = re.sub(r"__", "", text)
     text = re.sub(r"(?<!\*)\*(?!\*)", "", text)
@@ -29,96 +24,138 @@ def clean_embedtext(text:str):
     return text
 
 
+def message_text(message):
+    parts = []
+
+    for entry in message.get("content", []):
+        if entry.get("type") != "text":
+            continue
+
+        text = entry.get("text")
+
+        if text:
+            parts.append(text)
+
+    return "\n".join(parts).strip()
+
+
+def group_turns(messages):
+    turns = []
+    index = 0
+
+    while index < len(messages):
+        message = messages[index]
+        role = message.get("role")
+        texts = [message_text(message)]
+        ids = [message.get("id")]
+        index += 1
+
+        while index < len(messages) and messages[index].get("role") == role:
+            texts.append(message_text(messages[index]))
+            ids.append(messages[index].get("id"))
+            index += 1
+
+        turns.append({
+            "role": role,
+            "text": "\n\n".join(t for t in texts if t).strip(),
+            "ids": [i for i in ids if i],
+        })
+
+    return turns
+
+
+def pair_turns(turns):
+    pairs = []
+    index = 0
+
+    while index < len(turns):
+        current = turns[index]
+        following = turns[index + 1] if index + 1 < len(turns) else None
+
+        if current["role"] == "user" and following and following["role"] == "assistant":
+            pairs.append({
+                "text": f" User: {current['text']} \n\n assistant: {following['text']} ",
+                "ids": current["ids"] + following["ids"],
+                "roles": ["user", "assistant"],
+                "has_text": bool(current["text"] or following["text"]),
+            })
+
+            index += 2
+            continue
+
+        label = "User" if current["role"] == "user" else "assistant"
+
+        pairs.append({
+            "text": f" {label}: {current['text']} ",
+            "ids": current["ids"],
+            "roles": [current["role"]],
+            "has_text": bool(current["text"]),
+        })
+
+        index += 1
+
+    return [pair for pair in pairs if pair["has_text"]]
+
+
+def build_chunk(chunks, conversation_id, text, ids, roles):
+    chunks.append({
+        "chunk_id": f"chunk-{len(chunks) + 1:03d}",
+        "conversation_id": conversation_id,
+        "type": "text",
+        "text": text,
+        "embedded_text": clean_embedtext(text),
+        "verbatim": False,
+        "source_message_ids": ids,
+        "roles_included": roles,
+        "order_index": len(chunks),
+        "char_count": len(text),
+    })
+
 
 def create_chunks(data):
-    max_char = 1000
+    if not isinstance(data, dict):
+        return {"ok": False, "message": "create_chunks: data is not a dict", "chunks": []}
+
+    messages = data.get("messages")
+
+    if not isinstance(messages, list) or not messages:
+        return {"ok": False, "message": "create_chunks: conversation has no messages", "chunks": []}
+
+    conversation_id = data.get("conversation_id")
     chunks = []
-    # with open(chat, 'r', encoding="utf-8") as file:
-    #     data = json.load(file)
 
-    messages = data["messages"]
-    conversation_id = data["conversation_id"]
+    for pair in pair_turns(group_turns(messages)):
+        text = pair["text"]
 
-    i = 0
-    while i < len(messages) - 1:
-        user = messages[i]
-        assistant = messages[i+1]
+        if len(text) <= MAX_CHARS:
+            build_chunk(chunks, conversation_id, text, pair["ids"], pair["roles"])
+            continue
 
-        if user["role"] == "user" or assistant["role"] == "assistant":
-            user_text = user["content"][0]["text"]
-            assistant_text = assistant["content"][0]["text"]
+        step = max(1, MAX_CHARS - OVERLAP)
 
-            combined_text = f" User: {user_text} \n\n assistant: {assistant_text} "
+        for start in range(0, len(text), step):
+            piece = text[start:start + MAX_CHARS]
 
-            if len(combined_text) <= max_char:
+            if not piece.strip():
+                continue
 
-                embed_text = clean_embedtext(combined_text)
+            roles = pair["roles"] if start == 0 else ["assistant"]
 
-                chunks.append({
-                    "chunk_id": f"chunk-{len(chunks) + 1:03d}",
-                    "conversation_id": conversation_id,
-                    "type": "text",
-                    "text": combined_text,
-                    "embedded_text": embed_text,
-                    "verbatim": False,
-                    "source_message_ids": [
-                        user["id"],
-                        assistant["id"]
-                    ],
-                    "roles_included": [
-                        "user",
-                        "assistant"
-                    ],
-                    "order_index": len(chunks),
-                    "char_count": len(combined_text)
-                })
+            build_chunk(chunks, conversation_id, piece, pair["ids"], roles)
 
-            else:
-                overlap = 100
-                onlyassistant = False
-                for start in range(0, len(combined_text), max_char - overlap):
+    if not chunks:
+        return {
+            "ok": False,
+            "message": "create_chunks: conversation contained no text to summarise",
+            "chunks": [],
+        }
 
-                    chunk_text = combined_text[start:start + max_char]
-                    embed_text = clean_embedtext(chunk_text)
+    covered = {i for chunk in chunks for i in chunk["source_message_ids"]}
+    expected = {m.get("id") for m in messages if message_text(m)}
 
-                    if onlyassistant:
-                        roles_included = ["assistant"]
-                    else :
-                        roles_included = ["user", "assistant"]
-
-                    chunks.append({
-                        "chunk_id": f"chunk-{len(chunks) + 1:03d}",
-                        "conversation_id": conversation_id,
-                        "type": "text",
-                        "text": chunk_text,
-                        "embedded_text": embed_text,
-                        "verbatim": False,
-                        "source_message_ids": [
-                            user["id"],
-                            assistant["id"]
-                        ],
-                        "roles_included": roles_included,
-                        "order_index": len(chunks),
-                        "char_count": len(chunk_text)
-                    })
-
-                    onlyassistant = True
-            i += 2
-
-        else:
-            i += 1
-
-    with open(chunks_file, 'w', encoding="utf-8") as file:
-        data = json.dump(chunks, file, indent = 4, ensure_ascii=False)
-
-    return{
-        "ok":True,
-        "message":"chunks created successfully",
-        "chunks":chunks
+    return {
+        "ok": True,
+        "message": "chunks created successfully",
+        "chunks": chunks,
+        "messages_without_chunk": sorted(i for i in expected - covered if i),
     }
-
-
-# with open(chat, 'r', encoding="utf-8") as file:
-#     data = json.load(file)
-
-# print(create_chunks(data))

@@ -1,41 +1,64 @@
-import chromadb
 from pathlib import Path
-import json
+
+import chromadb
 
 
 app_dir = Path(__file__).parent.parent
-chromapath = app_dir/"chroma_data"
+chromapath = app_dir / "chroma_data"
+
+
+def collection_name(conversation_id):
+    return f"conv-{conversation_id}"
+
+
+def get_client():
+    chromapath.mkdir(parents=True, exist_ok=True)
+
+    return chromadb.PersistentClient(path=str(chromapath))
+
 
 def add_chunks_to_chroma(data):
+    if not isinstance(data, list) or not data:
+        return {"ok": False, "message": "add_chunks_to_chroma: no embedded chunks supplied"}
 
-    # with open(embed_json, 'r', encoding="utf-8") as file:
-    #     data = json.load(file)
-    conversation_id = data[0].get("conversation_id")
+    usable = [c for c in data if c.get("embedding") and c.get("chunk_id")]
 
-    client = chromadb.PersistentClient(path=chromapath)
-    collection = client.get_or_create_collection(
-        name = f"conv-{conversation_id}",
-        metadata={"hnsw:space": "cosine"}
-    )
+    if not usable:
+        return {"ok": False, "message": "add_chunks_to_chroma: no chunk carried an embedding"}
 
-    collection.add(
-        ids=[c["chunk_id"] for c in data],
-        embeddings=[c["embedding"] for c in data],
-        documents= [ c["embedded_text"] for c in data],
-        metadatas=[{
-            "conversation_id": c["conversation_id"],
-            "type": c["type"],
-            "verbatim": c["verbatim"],
-            "order_index": c["order_index"],
-            "char_count": c["char_count"],
-            "roles_included": ",".join(c["roles_included"]),
-            "source_message_ids": ",".join(c["source_message_ids"]),
-        } for c in data ]
-    )
+    conversation_id = usable[0].get("conversation_id")
+
+    if not conversation_id:
+        return {"ok": False, "message": "add_chunks_to_chroma: chunks have no conversation_id"}
+
+    try:
+        client = get_client()
+
+        collection = client.get_or_create_collection(
+            name=collection_name(conversation_id),
+            metadata={"hnsw:space": "cosine"},
+        )
+
+        collection.upsert(
+            ids=[c["chunk_id"] for c in usable],
+            embeddings=[c["embedding"] for c in usable],
+            documents=[c.get("embedded_text") or c.get("text") or "" for c in usable],
+            metadatas=[{
+                "conversation_id": str(c.get("conversation_id") or ""),
+                "type": str(c.get("type") or "text"),
+                "verbatim": bool(c.get("verbatim")),
+                "order_index": int(c.get("order_index") or 0),
+                "char_count": int(c.get("char_count") or 0),
+                "roles_included": ",".join(c.get("roles_included") or []),
+                "source_message_ids": ",".join(str(i) for i in (c.get("source_message_ids") or [])),
+            } for c in usable],
+        )
+    except Exception as e:
+        return {"ok": False, "message": f"add_chunks_to_chroma: {e}"}
 
     return {
-        "ok":True,
-        "message":"successfully stored in chroma",
-        "conversation_id":conversation_id
+        "ok": True,
+        "message": "successfully stored in chroma",
+        "conversation_id": conversation_id,
+        "stored": len(usable),
     }
-

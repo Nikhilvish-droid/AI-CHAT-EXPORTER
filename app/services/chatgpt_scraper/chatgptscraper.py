@@ -6,7 +6,9 @@ from datetime import datetime, timezone
 import re
 from curl_cffi import requests as cffi_requests
 
-folder = "1" 
+from app.services import assets as assetlib
+
+folder = "nontext-1"
 app_dir = Path(__file__).parent.parent.parent
 platform = "chatgpt"
 
@@ -15,6 +17,16 @@ script_file = app_dir/"demo_data"/platform/folder/"script.txt"
 enqueue = app_dir/"demo_data"/platform/folder/"enqueue.json"
 chat_json = app_dir/"demo_data"/platform/folder/"chat_data.json"
 decoded_json = app_dir/"demo_data"/platform/folder/"decoded.txt"
+assets_dir = app_dir/"demo_data"/platform/folder/"assets"
+
+KEEP_CONTENT_TYPES = {"text", "multimodal_text"}
+
+ASSET_PART_TYPES = {
+    "image_asset_pointer": "image",
+    "audio_asset_pointer": "audio",
+    "video_container_asset_pointer": "video",
+    "file_asset_pointer": "file",
+}
 
 
 def _ok(value):
@@ -234,6 +246,139 @@ def get_conversation_data(decoded):
 
 
 
+def normalize_file_id(value):
+    if not isinstance(value, str) or not value:
+        return None
+
+    value = value.split("?")[0]
+
+    for prefix in ("sediment://", "file-service://"):
+        if value.startswith(prefix):
+            value = value[len(prefix):]
+
+    value = value.rstrip("/")
+
+    if value.endswith("/raw"):
+        value = value[:-4]
+
+    value = value.split("/")[-1]
+
+    for prefix in ("file_", "file-"):
+        if value.startswith(prefix):
+            value = value[len(prefix):]
+
+    value = value.replace("-", "").lower()
+
+    return value or None
+
+
+def walk_mapping(mapping):
+    root_id = None
+
+    for node_id, node in mapping.items():
+        if isinstance(node, dict) and node.get("parent") is None:
+            root_id = node_id
+            break
+
+    if root_id is None:
+        nodes = [n for n in mapping.values() if isinstance(n, dict)]
+        return sorted(
+            nodes,
+            key=lambda n: ((n.get("message") or {}).get("create_time") or 0)
+        )
+
+    ordered = []
+    seen = set()
+    current = root_id
+
+    while current and current not in seen:
+        seen.add(current)
+        node = mapping.get(current)
+
+        if not isinstance(node, dict):
+            break
+
+        ordered.append(node)
+
+        children = node.get("children") or []
+
+        if not children:
+            break
+
+        current = children[-1]
+
+    return ordered
+
+
+def build_part(part):
+    if not part:
+        return None
+
+    if isinstance(part, str):
+        text = restore_utf8(part).strip()
+        if not text:
+            return None
+        return {"type": "text", "text": text}
+
+    if not isinstance(part, dict):
+        return None
+
+    part_type = ASSET_PART_TYPES.get(part.get("content_type"))
+
+    if not part_type:
+        return None
+
+    pointer = part.get("asset_pointer")
+    file_id = normalize_file_id(pointer)
+
+    if not file_id:
+        return None
+
+    return assetlib.build_entry(
+        entry_type=part_type,
+        file_id=file_id,
+        asset_pointer=pointer,
+        mime_type=part.get("mime_type"),
+        size_bytes=part.get("size_bytes"),
+        width=part.get("width"),
+        height=part.get("height"),
+    )
+
+
+def build_attachments(message):
+    metadata = message.get("metadata") or {}
+    attachments = metadata.get("attachments")
+
+    if not isinstance(attachments, list):
+        return []
+
+    entries = []
+
+    for attachment in attachments:
+        if not isinstance(attachment, dict):
+            continue
+
+        file_id = normalize_file_id(attachment.get("id"))
+
+        if not file_id:
+            continue
+
+        mime_type = attachment.get("mime_type") or attachment.get("mimeType")
+        name = restore_utf8(attachment.get("name") or "")
+
+        entries.append(assetlib.build_entry(
+            entry_type="image" if assetlib.is_embeddable(mime_type) else "file",
+            file_id=file_id,
+            asset_pointer=attachment.get("id"),
+            name=name,
+            mime_type=mime_type,
+            size_bytes=attachment.get("size") or attachment.get("file_size"),
+            origin="upload",
+        ))
+
+    return entries
+
+
 def get_messages(mapping):
     if not isinstance(mapping, dict):
         return _fail("get_messages: mapping is not a dict")
@@ -241,36 +386,50 @@ def get_messages(mapping):
     try:
         messages = []
 
-        for nodeid, node in mapping.items():
-            if not isinstance(node, dict):
-                continue
+        for node in walk_mapping(mapping):
             message = node.get("message")
 
-            if message is None or not isinstance(message, dict):
+            if not isinstance(message, dict):
                 continue
 
-            role = message.get("author", {}).get("role")
+            author = message.get("author") or {}
+            role = author.get("role")
+            content = message.get("content") or {}
+            content_type = content.get("content_type")
 
-            if role not in ["user", "assistant"]:
+            if content_type not in KEEP_CONTENT_TYPES:
                 continue
 
-            content = message.get("content", {})
-            parts = content.get("parts", [])
-
-            # parts = [part for part in parts if part]
-            if not parts or not isinstance(parts, list):
+            if role == "tool":
+                if content_type != "multimodal_text":
+                    continue
+                role = "assistant"
+            elif role not in ("user", "assistant"):
                 continue
-            # text = "\n".join(str(part) for part in parts)
 
             content_block = []
-            for part in parts:
-                if not part:
-                    continue
-                if isinstance(part, str):
-                    content_block.append({"type": "text", "text": restore_utf8(part)})
+
+            for attachment in build_attachments(message):
+                content_block.append(attachment)
+
+            parts = content.get("parts")
+
+            if isinstance(parts, list):
+                for part in parts:
+                    entry = build_part(part)
+                    if entry:
+                        content_block.append(entry)
 
             if not content_block:
                 continue
+
+            metadata = message.get("metadata") or {}
+            title = metadata.get("image_gen_title")
+
+            if title:
+                for entry in content_block:
+                    if entry["type"] != "text" and not entry.get("title"):
+                        entry["title"] = restore_utf8(title)
 
             messages.append({
                 "id": message.get("id"),
@@ -279,9 +438,143 @@ def get_messages(mapping):
                 "timestamp": message.get("create_time")
             })
 
+        if not messages:
+            return _fail("get_messages: no messages extracted")
+
         return _ok(messages)
     except Exception as e:
         return _fail(f"get_messages: failed: {e}")
+
+
+def collect_assets(messages):
+    return assetlib.collect(messages)
+
+
+def downloadable(wanted):
+    return {
+        file_id: entries
+        for file_id, entries in wanted.items()
+        if entries[0].get("embeddable")
+    }
+
+
+def fetch_assets(url, wanted):
+    if not wanted:
+        return _ok({})
+
+    from playwright.sync_api import sync_playwright
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    downloaded = {}
+
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+
+            try:
+                page = browser.new_page()
+
+                try:
+                    page.goto(url, wait_until="networkidle", timeout=30000)
+                except PlaywrightTimeoutError:
+                    pass
+
+                try:
+                    page.wait_for_selector("img", timeout=10000)
+                except PlaywrightTimeoutError:
+                    return _fail("fetch_assets: no images rendered on the page")
+
+                for _ in range(10):
+                    page.mouse.wheel(0, 2000)
+                    page.wait_for_timeout(250)
+
+                found = page.eval_on_selector_all(
+                    "img[src], source[srcset], a[href]",
+                    """els => els.map(el => ({
+                        src: el.currentSrc || el.src || el.href || '',
+                        alt: el.getAttribute('alt') || ''
+                    }))"""
+                )
+
+                index = {}
+
+                for item in found:
+                    file_id = normalize_file_id(item.get("src"))
+
+                    if file_id and file_id in wanted and file_id not in index:
+                        index[file_id] = item
+
+                for file_id, item in index.items():
+                    try:
+                        response = page.request.get(item["src"], timeout=30000)
+
+                        if not response.ok:
+                            continue
+
+                        mime_type = assetlib.normalize_mime(response.headers.get("content-type"))
+                        declared = response.headers.get("content-length")
+
+                        if declared and declared.isdigit():
+                            if int(declared) > assetlib.MAX_EMBED_BYTES:
+                                continue
+
+                        body = response.body()
+
+                        if not assetlib.should_download(mime_type, len(body)):
+                            continue
+
+                        downloaded[file_id] = {
+                            "data": body,
+                            "mime_type": mime_type,
+                            "url": item["src"],
+                            "alt": restore_utf8(item.get("alt") or ""),
+                        }
+                    except Exception:
+                        continue
+            finally:
+                browser.close()
+
+    except Exception as e:
+        return _fail(f"fetch_assets: failed: {e}")
+
+    return _ok(downloaded)
+
+
+def save_assets(wanted, downloaded, conversation_id):
+    target_dir = assets_dir / str(conversation_id)
+
+    for file_id, entries in wanted.items():
+        asset = downloaded.get(file_id)
+
+        if not asset:
+            assetlib.mark_unavailable(entries)
+            continue
+
+        mime_type = asset.get("mime_type") or entries[0].get("mime_type")
+
+        try:
+            file_path = assetlib.save_binary(
+                target_dir,
+                file_id,
+                asset["data"],
+                mime_type,
+                entries[0].get("name"),
+            )
+        except Exception:
+            assetlib.mark_unavailable(entries)
+            continue
+
+        assetlib.apply_download(
+            entries,
+            file_path,
+            app_dir,
+            mime_type=mime_type,
+            url=asset.get("url"),
+            alt=asset.get("alt"),
+            size_bytes=len(asset["data"]),
+        )
+
+    return assetlib.summarize(wanted)
 
 
 def load_chatgpt_chat(url):
@@ -321,14 +614,33 @@ def load_chatgpt_chat(url):
         return {"ok": False, "message": messages_res.get("message", "get_messages failed")}
     messages = messages_res["value"]
 
+    wanted = collect_assets(messages)
+    fetchable = downloadable(wanted)
+    assets_saved = 0
+    assets_skipped = len(wanted)
+
+    if fetchable:
+        assets_res = fetch_assets(url, fetchable)
+
+        if assets_res.get("ok"):
+            assets_saved, assets_skipped = save_assets(wanted, assets_res["value"], conversation_id)
+        else:
+            assetlib.mark_unavailable([e for entries in fetchable.values() for e in entries])
+            assets_saved, assets_skipped = assetlib.summarize(wanted)
+
     result = {
         "conversation_id":conversation_id,
         "platform":"chatgpt",
         "source_url":url,
         "title":title,
         "scraped_at":datetime.now(timezone.utc).isoformat(),
+        "has_assets": bool(wanted),
+        "assets_saved": assets_saved,
+        "assets_skipped": assets_skipped,
         "messages":messages
     }
+
+    chat_json.parent.mkdir(parents=True, exist_ok=True)
 
     with open(chat_json, 'w', encoding="utf-8") as file:
         json.dump(result, file, indent=4, ensure_ascii=False)

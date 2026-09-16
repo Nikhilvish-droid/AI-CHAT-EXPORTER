@@ -1,71 +1,80 @@
-from sentence_transformers import SentenceTransformer
-from pathlib import Path
-import json
+MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
-folder = "1"
-app_dir = Path(__file__).parent.parent
-platform = "gemini"
+SECTION_QUERIES = {
+    "overview": "what is this conversation about, overall goal, main topic, background and context",
+    "key_decisions": "decisions made, choices agreed upon, conclusions reached, important decisions",
+    "problems_solutions": "problems discussed, errors encountered, challenges, solutions, fixes, troubleshooting",
+    "technical_details": "technical concepts, technologies, tools, code, implementation details, methods discussed",
+}
 
-embeddings = app_dir/"demo_data"/platform/folder/"embed.json"
-docs_embed = app_dir/"demo_data"/platform/folder/"docs_embed.json"
+_model = None
 
-model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+
+def get_model():
+    global _model
+
+    if _model is None:
+        from sentence_transformers import SentenceTransformer
+
+        _model = SentenceTransformer(MODEL_NAME)
+
+    return _model
+
+
+def get_docs_embed():
+    model = get_model()
+    result = {}
+
+    for section, query in SECTION_QUERIES.items():
+        vector = model.encode(query, normalize_embeddings=True)
+        result[section] = {"query_text": query, "embedding": vector.tolist()}
+
+    return result
 
 
 def create_embeddings(chunk_data):
-    # with open(chunks, 'r', encoding="utf-8") as file:
-    #     chunk_data = json.load(file)
+    if not isinstance(chunk_data, list) or not chunk_data:
+        return {"ok": False, "message": "create_embeddings: no chunks supplied", "data": []}
 
+    try:
+        model = get_model()
+    except Exception as e:
+        return {"ok": False, "message": f"create_embeddings: model unavailable: {e}", "data": []}
+
+    embedded = []
 
     for chunk in chunk_data:
-        embed_text = chunk.get("embedded_text", "").strip()
+        embed_text = (chunk.get("embedded_text") or "").strip()
+
+        if not embed_text:
+            embed_text = (chunk.get("text") or "").strip()
 
         if not embed_text:
             continue
-        
-        embedding = model.encode(embed_text, normalize_embeddings=True)
 
-        chunk["embedding"] = embedding.tolist()
+        try:
+            vector = model.encode(embed_text, normalize_embeddings=True)
+        except Exception as e:
+            return {"ok": False, "message": f"create_embeddings: encoding failed: {e}", "data": []}
 
-    with open(embeddings, 'w', encoding="utf-8")as file:
-        json.dump(chunk_data, file, indent=4, ensure_ascii=False)
+        chunk["embedding"] = vector.tolist()
+        embedded.append(chunk)
 
-    get_docs_embed()
+    if not embedded:
+        return {
+            "ok": False,
+            "message": "create_embeddings: every chunk was empty after cleaning",
+            "data": [],
+        }
 
-    return{
-        "ok":True,
-        "data":chunk_data
+    try:
+        docs_embed = get_docs_embed()
+    except Exception as e:
+        return {"ok": False, "message": f"create_embeddings: section queries failed: {e}", "data": []}
+
+    return {
+        "ok": True,
+        "data": embedded,
+        "docs_embed": docs_embed,
+        "skipped": len(chunk_data) - len(embedded),
     }
-
-# print(create_embeddings())
-def get_docs_embed():
-
-    queries = {
-        "overview": "what is this conversation about, overall goal, main topic, background and context",
-        
-        "key_decisions": "decisions made, choices agreed upon, conclusions reached, important decisions",
-        
-        "problems_solutions": "problems discussed, errors encountered, challenges, solutions, fixes, troubleshooting",
-        
-        "technical_details": "technical concepts, technologies, tools, code, implementation details, methods discussed"
-    }
-
-    result = {}
-
-    for section, query in queries.items():
-
-        vector = model.encode(query, normalize_embeddings= True)
-        result[section] = {"query_text":query, "embedding":vector.tolist()}
-
-    with open(docs_embed, 'w', encoding="utf-8") as file:
-        json.dump(result, file , indent=4, ensure_ascii=False)
-
-    return "success"
-
-
-# print(get_docs_embed())
-    
-
-    
-
-    

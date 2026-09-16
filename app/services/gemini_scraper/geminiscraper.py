@@ -7,13 +7,26 @@ from datetime import datetime, timezone
 import re
 import uuid
 import time
+import hashlib
 
+
+from app.services import assets as assetlib
 
 app_dir = Path(__file__).parent.parent.parent
-folder = "1"
+folder = "nontext-1"
+platform = "gemini"
 
-html_file = app_dir / "demo_data" / "gemini" / folder / "scrape.html"
-chat = app_dir / "demo_data" / "gemini" / folder / "chat.json"
+html_file = app_dir / "demo_data" / platform / folder / "scrape.html"
+chat = app_dir / "demo_data" / platform / folder / "chat_data.json"
+assets_dir = app_dir / "demo_data" / platform / folder / "assets"
+
+TURN_SELECTOR = "share-turn-viewer"
+
+ASSET_SELECTOR = (
+    "share-turn-viewer img[src], "
+    "share-turn-viewer source[srcset], "
+    "share-turn-viewer a[download][href]"
+)
 
 
 def _ok(value):
@@ -24,15 +37,35 @@ def _fail(message: str):
     return {"ok": False, "message": message}
 
 
-def get_html(url):
+def asset_id_for(src):
+    if not isinstance(src, str) or not src.strip():
+        return None
+
+    if src.startswith("data:"):
+        return None
+
+    base = src.split("?")[0].split("#")[0].strip()
+
+    if not base:
+        return None
+
+    return hashlib.sha1(base.encode("utf-8")).hexdigest()[:32]
+
+
+def capture_page(url):
     if not isinstance(url, str) or not url.strip():
-        return _fail("get_html: invalid url")
+        return _fail("capture_page: invalid url")
+
+    render_html = None
+    assets = {}
 
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
+
             try:
                 page = browser.new_page()
+
                 try:
                     page.goto(url, wait_until="networkidle", timeout=30000)
                 except PlaywrightTimeoutError:
@@ -45,23 +78,86 @@ def get_html(url):
                     )
                 except PlaywrightTimeoutError:
                     return _fail(
-                        "get_html: conversation content not found. "
+                        "capture_page: conversation content not found. "
                         "The share page may still be loading, require sign-in, "
                         "or use an unsupported Gemini share format."
                     )
+
+                for _ in range(10):
+                    page.mouse.wheel(0, 2000)
+                    page.wait_for_timeout(250)
 
                 try:
                     render_html = page.inner_html("main")
                 except Exception:
                     render_html = page.content()
+
+                try:
+                    found = page.eval_on_selector_all(
+                        ASSET_SELECTOR,
+                        """els => els.map(el => ({
+                            src: el.getAttribute('src') || el.getAttribute('href') || '',
+                            current: el.currentSrc || '',
+                            alt: el.getAttribute('alt') || '',
+                            width: el.naturalWidth || 0,
+                            height: el.naturalHeight || 0
+                        }))"""
+                    )
+                except Exception:
+                    found = []
+
+                for item in found:
+                    candidates = [item.get("src"), item.get("current")]
+                    target = next((c for c in candidates if c and not c.startswith("data:")), None)
+
+                    if not target:
+                        continue
+
+                    ids = [asset_id_for(c) for c in candidates if c]
+                    ids = [i for i in ids if i]
+
+                    if not ids or all(i in assets for i in ids):
+                        continue
+
+                    try:
+                        response = page.request.get(target, timeout=30000)
+
+                        if not response.ok:
+                            continue
+
+                        mime_type = assetlib.normalize_mime(response.headers.get("content-type"))
+                        declared = response.headers.get("content-length")
+
+                        if declared and declared.isdigit():
+                            if int(declared) > assetlib.MAX_EMBED_BYTES:
+                                continue
+
+                        body = response.body()
+
+                        if not assetlib.should_download(mime_type, len(body)):
+                            continue
+
+                        payload = {
+                            "data": body,
+                            "mime_type": mime_type,
+                            "url": target,
+                            "alt": item.get("alt") or "",
+                            "width": item.get("width") or 0,
+                            "height": item.get("height") or 0,
+                        }
+                    except Exception:
+                        continue
+
+                    for asset_id in ids:
+                        assets[asset_id] = payload
             finally:
                 browser.close()
 
     except Exception as e:
-        return _fail(f"get_html: request failed: {e}")
+        return _fail(f"capture_page: request failed: {e}")
 
     if not isinstance(render_html, str) or not render_html.strip():
-        return _fail("get_html: empty html returned")
+        return _fail("capture_page: empty html returned")
 
     try:
         html_file.parent.mkdir(parents=True, exist_ok=True)
@@ -70,9 +166,9 @@ def get_html(url):
             f.write(render_html)
 
     except Exception as e:
-        return _fail(f"get_html: could not write html file: {e}")
+        return _fail(f"capture_page: could not write html file: {e}")
 
-    return _ok(render_html)
+    return _ok({"html": render_html, "assets": assets})
 
 
 def _format_table(table) -> str:
@@ -118,6 +214,98 @@ def _extract_model_text(md_container) -> str:
     return md_container.get_text(separator="\n", strip=True)
 
 
+def extract_assets(element, assets, origin="generated"):
+    if element is None:
+        return []
+
+    entries = []
+    seen = set()
+
+    for node in element.find_all(["img", "source", "a"]):
+        src = node.get("src") or node.get("srcset") or node.get("href")
+
+        if not src:
+            continue
+
+        src = src.split(",")[0].strip().split(" ")[0]
+        asset_id = asset_id_for(src)
+
+        if not asset_id or asset_id in seen:
+            continue
+
+        seen.add(asset_id)
+        asset = assets.get(asset_id)
+
+        if node.name == "a" and not asset:
+            continue
+
+        alt = node.get("alt") or (asset or {}).get("alt") or ""
+        mime_type = (asset or {}).get("mime_type") or assetlib.mime_from_name(src)
+
+        entry = assetlib.build_entry(
+            entry_type="image" if node.name in ("img", "source") else "file",
+            file_id=asset_id,
+            asset_pointer=src,
+            mime_type=mime_type,
+            size_bytes=len(asset["data"]) if asset else None,
+            alt=alt,
+            title=alt,
+            url=(asset or {}).get("url") or src,
+            width=(asset or {}).get("width") or node.get("width"),
+            height=(asset or {}).get("height") or node.get("height"),
+            origin=origin,
+        )
+
+        if asset:
+            entry["embeddable"] = True
+            entry["skip_reason"] = None
+
+        entries.append(entry)
+
+    return entries
+
+
+def collect_assets(messages):
+    return assetlib.collect(messages)
+
+
+def save_assets(wanted, downloaded, conversation_id):
+    target_dir = assets_dir / str(conversation_id)
+
+    for file_id, entries in wanted.items():
+        asset = downloaded.get(file_id)
+
+        if not asset:
+            assetlib.mark_unavailable(entries)
+            continue
+
+        mime_type = asset.get("mime_type") or entries[0].get("mime_type")
+
+        try:
+            file_path = assetlib.save_binary(
+                target_dir,
+                file_id,
+                asset["data"],
+                mime_type,
+                entries[0].get("name"),
+            )
+        except Exception:
+            assetlib.mark_unavailable(entries)
+            continue
+
+        assetlib.apply_download(
+            entries,
+            file_path,
+            app_dir,
+            mime_type=mime_type,
+            url=asset.get("url"),
+            alt=asset.get("alt"),
+            size_bytes=len(asset["data"]),
+        )
+
+    return assetlib.summarize(wanted)
+
+
 def json_schema(
         platform: str,
         source_url: str,
@@ -136,44 +324,44 @@ def json_schema(
     current_epoch = time.time()
 
     for idx, turn in enumerate(raw_turns):
-        text = (turn.get("text") or "").strip()
         role = turn.get("role")
-        if role not in ["user", "assistant"] or not text:
+
+        if role not in ["user", "assistant"]:
             continue
+
+        content_block = []
+
+        text = (turn.get("text") or "").strip()
+
+        if text:
+            content_block.append({"type": "text", "text": text})
+
+        for entry in turn.get("assets") or []:
+            content_block.append(entry)
+
+        if not content_block:
+            continue
+
         normalized_messages.append({
             "id": str(uuid.uuid4()),
             "role": role,
-            "content": [{"type": "text", "text": text}],
+            "content": content_block,
             "timestamp": round(current_epoch + idx, 6),
         })
 
     if not normalized_messages:
         return _fail("json_schema: no valid messages after normalizing turns")
 
-    chat_json = {
-        "conversation_id": conversation_id,
-        "platform": platform,
-        "source_url": source_url,
-        "title": title,
-        "scraped_at": datetime.now(timezone.utc).isoformat(),
-        "messages": normalized_messages,
-    }
-
-    try:
-        chat.parent.mkdir(parents=True, exist_ok=True)
-        with open(chat, "w", encoding="utf-8") as f:
-            json.dump(chat_json, f, indent=2, ensure_ascii=False)
-    except Exception as e:
-        return _fail(f"json_schema: could not write chat file: {e}")
-
-    return _ok(chat_json)
+    return _ok((conversation_id, normalized_messages))
 
 
-def parse_chat(html, url):
+def parse_chat(html, url, assets=None):
     if not isinstance(html, str) or not html.strip():
         return _fail("parse_chat: invalid html_data")
     if not isinstance(url, str) or not url.strip():
         return _fail("parse_chat: invalid url")
+
+    assets = assets or {}
 
     try:
         soup = BeautifulSoup(html, "html.parser")
@@ -184,7 +372,8 @@ def parse_chat(html, url):
         )
 
         turns = []
-        share_viewers = soup.find_all("share-turn-viewer")
+        share_viewers = soup.find_all(TURN_SELECTOR)
+
         if not share_viewers:
             return _fail(
                 "parse_chat: share-turn-viewer not found. "
@@ -193,43 +382,101 @@ def parse_chat(html, url):
 
         for turn_viewer in share_viewers:
             user_elem = turn_viewer.find("user-query")
+
             if user_elem:
+                user_assets = extract_assets(user_elem, assets, origin="upload")
                 user_text = _extract_user_text(user_elem)
-                if user_text:
-                    turns.append({"role": "user", "text": user_text})
+
+                if user_text or user_assets:
+                    turns.append({
+                        "role": "user",
+                        "text": user_text,
+                        "assets": user_assets,
+                    })
 
             model_elem = turn_viewer.find("message-content")
+
             if model_elem:
+                model_assets = extract_assets(model_elem, assets)
                 md_container = model_elem.find("div", class_="markdown")
-                if md_container:
-                    model_text = _extract_model_text(md_container)
-                    if model_text:
-                        turns.append({"role": "assistant", "text": model_text})
+                model_text = _extract_model_text(md_container) if md_container else ""
+
+                if model_text or model_assets:
+                    turns.append({
+                        "role": "assistant",
+                        "text": model_text,
+                        "assets": model_assets,
+                    })
 
         if not turns:
             return _fail("parse_chat: no user or assistant messages found")
 
-        return json_schema(
-            platform="gemini",
+        schema_res = json_schema(
+            platform=platform,
             source_url=url,
             title=title,
             raw_turns=turns,
         )
+
+        if not schema_res.get("ok"):
+            return schema_res
+
+        conversation_id, messages = schema_res["value"]
+
+        return _ok((conversation_id, title, messages))
+
     except Exception as e:
         return _fail(f"parse_chat: failed to parse html: {e}")
 
 
 def load_gemini_chat(url):
-    html_res = get_html(url)
-    if not html_res.get("ok"):
-        return {"ok": False, "message": html_res.get("message", "get_html failed")}
-    html_data = html_res["value"]
+    capture_res = capture_page(url)
 
-    chat_res = parse_chat(html_data, url)
+    if not capture_res.get("ok"):
+        return {"ok": False, "message": capture_res.get("message", "capture_page failed")}
+
+    html_data = capture_res["value"]["html"]
+    downloaded = capture_res["value"]["assets"]
+
+    chat_res = parse_chat(html_data, url, downloaded)
+
     if not chat_res.get("ok"):
         return {"ok": False, "message": chat_res.get("message", "parse_chat failed")}
-    chat_data = chat_res["value"]
 
-    print(len(chat_data.get("messages", [])), "messages loaded")
+    conversation_id, title, messages = chat_res["value"]
 
-    return {"ok": True, "data": chat_data}
+    wanted = collect_assets(messages)
+    assets_saved = 0
+    assets_skipped = len(wanted)
+
+    if wanted:
+        assets_saved, assets_skipped = save_assets(wanted, downloaded, conversation_id)
+
+    result = {
+        "conversation_id": conversation_id,
+        "platform": "gemini",
+        "source_url": url,
+        "title": title,
+        "scraped_at": datetime.now(timezone.utc).isoformat(),
+        "has_assets": bool(wanted),
+        "assets_saved": assets_saved,
+        "assets_skipped": assets_skipped,
+        "messages": messages,
+    }
+
+    try:
+        chat.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(chat, "w", encoding="utf-8") as f:
+            json.dump(result, f, indent=4, ensure_ascii=False)
+    except Exception as e:
+        return {"ok": False, "message": f"load_gemini_chat: could not write chat file: {e}"}
+
+    print("done")
+    return {"ok": True, "data": result}
+
+
+
+if __name__ == "__main__":
+    url="https://share.gemini.google/BbVnukg1YMHC"
+    load_gemini_chat(url)

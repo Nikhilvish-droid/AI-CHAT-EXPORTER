@@ -1,24 +1,27 @@
 from dotenv import load_dotenv
 import os
 import json
-from google import genai
-from pathlib import Path
+import re
+import time
+
 from openai import OpenAI
-from groq import Groq
+
+from app.services.codeblocks import normalize_newlines
 
 load_dotenv()
 
-folder = "1"
-platform = "gemini"
+SECTION_KEYS = ("overview", "key_decisions", "problems_solutions", "technical_details")
 
-app_dir = Path(__file__).parent.parent
-final_data = app_dir/"demo_data"/platform/folder/"final_data.json"
+MODEL = "openai/gpt-oss-120b"
+BASE_URL = "https://api.groq.com/openai/v1"
+TIMEOUT_SECONDS = 120
+MAX_ATTEMPTS = 3
 # retrieved_file = app_dir/"demo_data"/"chatgpt"/folder/"retrieved_data.json"
 # prompt_file = app_dir/"llm_prompt"/"prompt.txt"
 
 
 
-def openai_llm( retrieved_data):
+def openai_llm(retrieved_data):
 
     # with open(retrieved_file, 'r', encoding="utf-8") as file:
     #     retrieved_data = json.load(file)
@@ -35,7 +38,9 @@ def openai_llm( retrieved_data):
         Your task is to transform ONLY the information contained in these retrieved chunks into a detailed, well-written document with exactly these same four sections.
         IMPORTANT:
         The retrieved chunks are the SOURCE OF TRUTH.
-        make sure length of the data you give is maximum 10-15 line and minimum depending on context present for every section max 10-15 but you can also add more line if you think half data is getting eliminated like code block or non-text part.
+        Write as much as the retrieved chunks justify. Do not truncate to a fixed line count.
+        Code blocks and diagrams are carried into the final document separately and verbatim, so you
+        do not need to reproduce them here - describe what they do and refer to them by name.
         Do NOT add information from your own knowledge.
         Do NOT make assumptions.
         Do NOT infer information that is not explicitly present.
@@ -49,7 +54,7 @@ def openai_llm( retrieved_data):
         If different chunks contain different information about the same topic, combine all of the information into the appropriate section.
         If multiple chunks contain the same information, mention it only once unless repeating it is necessary for clarity or context.
         Do not remove a detail merely because it appears less important. If it contains useful information related to the section, preserve it.
-        The final document should normally be detailed enough to produce approximately 2–5 pages of content depending on how much information exists in the retrieved JSON.
+        The final document should normally be detailed enough to produce approximately 2-7 pages of content depending on how much information exists in the retrieved JSON.
         Do not artificially add content just to increase the page count. The amount of output must depend entirely on the amount of useful information present in the retrieved chunks.
 
         --------------------------------------------------
@@ -209,49 +214,53 @@ def openai_llm( retrieved_data):
 
     """
 
-    client = OpenAI(
-        api_key=os.getenv("XAI_API_KEY"),
-        base_url="https://api.groq.com/openai/v1",
-    )
+    api_key = os.getenv("GROQ_API_KEY") or os.getenv("XAI_API_KEY")
 
-    response = client.responses.create(
-        model="openai/gpt-oss-120b",
-        input= prompt
-    )
+    if not api_key:
+        raise RuntimeError("No LLM API key configured (set GROQ_API_KEY)")
 
-    result = json.loads(response.output_text)
+    client = OpenAI(api_key=api_key, base_url=BASE_URL, timeout=TIMEOUT_SECONDS)
 
-    with open(final_data, 'w', encoding="utf-8") as file:
-        json.dump(result, file, indent=4, ensure_ascii=False)
+    response = None
+    last_error = None
 
+    for attempt in range(MAX_ATTEMPTS):
+        try:
+            response = client.responses.create(model=MODEL, input=prompt)
+            break
+        except Exception as e:
+            last_error = e
+
+            if attempt == MAX_ATTEMPTS - 1:
+                raise RuntimeError(f"LLM request failed after {MAX_ATTEMPTS} attempts: {e}")
+
+            time.sleep(2 ** attempt)
+
+    if response is None:
+        raise RuntimeError(f"LLM request failed: {last_error}")
+
+    raw = (response.output_text or "").strip()
+
+    if raw.startswith("```"):
+        raw = re.sub(r"^```[A-Za-z0-9_+-]*\s*", "", raw)
+        raw = re.sub(r"\s*```$", "", raw)
+
+    try:
+        result = json.loads(raw)
+    except json.JSONDecodeError:
+        match = re.search(r"\{.*\}", raw, re.DOTALL)
+
+        if not match:
+            raise ValueError("LLM did not return JSON")
+
+        result = json.loads(match.group(0))
+
+    if not isinstance(result, dict):
+        raise ValueError("LLM returned JSON that is not an object")
+
+    for key in SECTION_KEYS:
+        result[key] = normalize_newlines(str(result.get(key) or ""))
 
     return result
 
 # openai_llm()
-
-
-# def gemini_llm():
-#     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-#     with open(retrieved_data, 'r', encoding= "utf-8") as file:
-#         data = json.load(file)
-#     response = client.models.generate_content(
-#         model="gemini-3.7-flash",
-#         contents="what is rag in 2-3 line"
-#     )
-#     print(response.text)
-# # gemini_llm()
-
-
-# def groq_llm():
-#     client = Groq(api_key=os.getenv("XAI_API_KEY"))
-#     response = client.chat.completions.create(
-#         model = "openai/gpt-oss-120b",
-#         messages=[
-#             {
-#                 "role":"user",
-#                 "content":"what is java in 3 line"
-#             }
-#         ]
-#     )
-#     print(response.choices[0].message.content)
-# # groq_llm()

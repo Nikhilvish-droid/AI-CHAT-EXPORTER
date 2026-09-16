@@ -1,0 +1,30 @@
+<svg width="100%" viewBox="0 0 680 340" role="img">
+<title>Flowchart of multiply_three function</title>
+<desc>Shows the function taking three inputs a, b, c, multiplying them together, and returning the result.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+
+<g class="node c-gray" onclick="sendPrompt('What does calling multiply_three(a, b, c) look like?')">
+<rect x="250" y="20" width="180" height="44" rx="8" stroke-width="0.5"/>
+<text class="th" x="340" y="42" text-anchor="middle" dominant-baseline="central">Start: call function</text>
+</g>
+<line x1="340" y1="64" x2="340" y2="100" class="arr" marker-end="url(#arrow)"/>
+
+<g class="node c-blue" onclick="sendPrompt('What are a, b, c in the function?')">
+<rect x="220" y="100" width="240" height="56" rx="8" stroke-width="0.5"/>
+<text class="th" x="340" y="118" text-anchor="middle" dominant-baseline="central">Receive a, b, c</text>
+<text class="ts" x="340" y="140" text-anchor="middle" dominant-baseline="central">Function parameters</text>
+</g>
+<line x1="340" y1="156" x2="340" y2="192" class="arr" marker-end="url(#arrow)"/>
+
+<g class="node c-teal" onclick="sendPrompt('How does a * b * c work in Python?')">
+<rect x="220" y="192" width="240" height="56" rx="8" stroke-width="0.5"/>
+<text class="th" x="340" y="210" text-anchor="middle" dominant-baseline="central">Compute a * b * c</text>
+<text class="ts" x="340" y="232" text-anchor="middle" dominant-baseline="central">Multiply all three</text>
+</g>
+<line x1="340" y1="248" x2="340" y2="284" class="arr" marker-end="url(#arrow)"/>
+
+<g class="node c-gray" onclick="sendPrompt('What does the return statement do?')">
+<rect x="250" y="284" width="180" height="44" rx="8" stroke-width="0.5"/>
+<text class="th" x="340" y="306" text-anchor="middle" dominant-baseline="central">Return result</text>
+</g>
+</svg>

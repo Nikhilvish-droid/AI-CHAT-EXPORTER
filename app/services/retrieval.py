@@ -1,22 +1,13 @@
-import json
-import chromadb
-from pathlib import Path
-from rank_bm25 import BM25Okapi
 import re
-# from sentence_transformers import CrossEncoder
 
-folder = "1"
-platform = "gemini"
-app_dir = Path(__file__).parent.parent
+from rank_bm25 import BM25Okapi
 
-docs_data = app_dir/"demo_data"/platform/folder/"docs_embed.json"
-retrieved_file = app_dir/"demo_data"/platform/folder/"retrieved_data.json"
-chroma_data = app_dir/"chroma_data"
+from app.services.chroma import get_client, collection_name
 
 TOP_SEMANTIC = 15
 TOP_KEYWORD = 15
 TOP_CANDIDATES = 10
-FINAL_TOP_K = 3
+FINAL_TOP_K = 5
 
 SEMANTIC_WEIGHT = 0.65
 KEYWORD_WEIGHT = 0.35
@@ -140,54 +131,42 @@ def retrieve_section( collection, query_embedding, query_text, top_k = FINAL_TOP
     return candidates[:top_k]
 
 
-def retrieve_data(conversation_id):
+def retrieve_data(conversation_id, docs_embed=None):
+    if not conversation_id:
+        return {}
 
-    # conversation_id = getconversation_id()
+    if not isinstance(docs_embed, dict) or not docs_embed:
+        return {}
 
-    with open(docs_data, 'r', encoding="utf-8") as file:
-        docs_embed = json.load(file)
-    
-    client = chromadb.PersistentClient(path=chroma_data)
-    
-    collection = client.get_collection(
-        name= f"conv-{conversation_id}")
+    try:
+        client = get_client()
+        collection = client.get_collection(name=collection_name(conversation_id))
+    except Exception:
+        return {}
 
     retrieved = {}
 
     for section, query in docs_embed.items():
+        if not isinstance(query, dict):
+            continue
 
-        embedding = query.get(
-            "embedding"
-        )
+        embedding = query.get("embedding")
+        query_text = query.get("query_text") or ""
 
-        query_text = query.get(
-            "query_text"
-        )
+        if not embedding:
+            continue
 
-        result = retrieve_section(
-            collection=collection,
-            query_embedding=embedding,
-            query_text=query_text,
-            top_k=FINAL_TOP_K
-        )
+        try:
+            retrieved[section] = retrieve_section(
+                collection=collection,
+                query_embedding=embedding,
+                query_text=query_text,
+                top_k=FINAL_TOP_K,
+            )
+        except Exception:
+            retrieved[section] = []
 
-        retrieved[section] = result
-    
-    with open(retrieved_file, 'w', encoding="utf-8") as file:
-        json.dump(retrieved, file, ensure_ascii=False, indent=4)
+    if not any(retrieved.values()):
+        return {}
 
     return retrieved
-
-
-
-
-
-# def getconversation_id():
-#     embed = Path(__file__).parent.parent/"demo_data"/folder/"embed.json"
-#     with open(embed, 'r', encoding="utf-8") as file:
-#         data = json.load(file)
-#     conversation_id = data[0].get("conversation_id")
-
-#     return conversation_id
-    
-

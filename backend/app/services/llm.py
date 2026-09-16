@@ -6,7 +6,7 @@ import time
 
 from openai import OpenAI
 
-from app.services.codeblocks import normalize_newlines
+from backend.app.services.codeblocks import normalize_newlines
 
 load_dotenv()
 

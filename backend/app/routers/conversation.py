@@ -4,18 +4,18 @@ from pathlib import Path
 from urllib.parse import urlparse
 import re
 
-from app.services.chatgpt_scraper.chatgptscraper import load_chatgpt_chat
-from app.services.gemini_scraper.geminiscraper import load_gemini_chat
-from app.services.claude_scraper.claudescraper import load_claude_chat
+from backend.app.services.chatgpt_scraper.chatgptscraper import load_chatgpt_chat
+from backend.app.services.gemini_scraper.geminiscraper import load_gemini_chat
+from backend.app.services.claude_scraper.claudescraper import load_claude_chat
 
-from app.services import assets as assetlib
-from app.services.codeblocks import extract_code_blocks
-from app.services.chunks import create_chunks
-from app.services.embedding import create_embeddings
-from app.services.chroma import add_chunks_to_chroma
-from app.services.retrieval import retrieve_data
-from app.services.llm import openai_llm
-from app.services.pdfgenerator import generate_pdf
+from backend.app.services import assets as assetlib
+from backend.app.services.codeblocks import extract_code_blocks
+from backend.app.services.chunks import create_chunks
+from backend.app.services.embedding import create_embeddings
+from backend.app.services.chroma import add_chunks_to_chroma
+from backend.app.services.retrieval import retrieve_data
+from backend.app.services.llm import openai_llm
+from backend.app.services.pdfgenerator import generate_pdf
 
 
 def safe_segment(value, fallback="memory_export"):

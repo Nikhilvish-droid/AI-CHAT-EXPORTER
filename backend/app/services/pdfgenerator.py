@@ -23,8 +23,8 @@ from reportlab.platypus import (
 )
 from reportlab.platypus.flowables import HRFlowable
 
-from app.services import assets as assetlib
-from app.services.codeblocks import normalize_newlines
+from backend.app.services import assets as assetlib
+from backend.app.services.codeblocks import normalize_newlines
 
 BASE_DIR = Path(__file__).parent.parent
 OUTPUT_FILE = BASE_DIR / "output" / "memory_export.pdf"

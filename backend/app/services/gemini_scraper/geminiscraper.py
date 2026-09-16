@@ -10,7 +10,7 @@ import time
 import hashlib
 
 
-from app.services import assets as assetlib
+from backend.app.services import assets as assetlib
 
 app_dir = Path(__file__).parent.parent.parent
 folder = "nontext-1"

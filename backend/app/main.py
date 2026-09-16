@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers.conversation import router
+from backend.app.routers.conversation import router
 
 app = FastAPI(
     title="AI Chat Exporter",

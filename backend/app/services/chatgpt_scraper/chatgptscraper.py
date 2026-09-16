@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 import re
 from curl_cffi import requests as cffi_requests
 
-from app.services import assets as assetlib
+from backend.app.services import assets as assetlib
 
 folder = "nontext-2"
 app_dir = Path(__file__).parent.parent.parent

@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import time
 from pathlib import Path
 
-from app.services import assets as assetlib
+from backend.app.services import assets as assetlib
 
 
 folder = "nontext-2"

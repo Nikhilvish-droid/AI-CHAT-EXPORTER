@@ -284,7 +284,7 @@ def get_messages(mapping):
         return _fail(f"get_messages: failed: {e}")
 
 
-def chat_scraper(url):
+def load_chatgpt_chat(url):
 
     html_res = html_fetcher(url)
     if not html_res.get("ok"):

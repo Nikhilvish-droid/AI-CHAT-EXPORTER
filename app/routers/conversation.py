@@ -4,7 +4,7 @@ from pathlib import Path
 from fastapi.responses import FileResponse
 
 # scrapers
-from app.services.chatgpt_scraper.chatgptscraper import chat_scraper
+from app.services.chatgpt_scraper.chatgptscraper import load_chatgpt_chat
 from app.services.gemini_scraper.geminiscraper import load_gemini_chat
 from app.services.claude_scraper.claudescraper import load_claude_chat
 
@@ -26,7 +26,7 @@ output_file = Path(__file__).parent.parent / "output" / "memory_export.pdf"
 def submit_link(url: str):
 
     if "chatgpt" in url.lower():
-        response = chat_scraper(url)
+        response = load_chatgpt_chat(url)
 
     elif "gemini" in url.lower():
         response = load_gemini_chat(url)

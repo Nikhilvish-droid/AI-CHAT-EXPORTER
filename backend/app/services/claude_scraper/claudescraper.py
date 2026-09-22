@@ -1,20 +1,16 @@
-import json
 import hashlib
 from curl_cffi import requests as cffi_request
 from datetime import datetime, timezone
 import time
 from pathlib import Path
 
-from backend.app.services import assets as assetlib
+from app.services import assets as assetlib
 
 
-folder = "nontext-2"
 app_dir = Path(__file__).parent.parent.parent
 platform = "claude"
 
-chat_data = app_dir/"demo_data"/platform/folder/"chat_data.json"
-scrape_data = app_dir/"demo_data"/platform/folder/"fetch_data.json"
-assets_dir = app_dir/"demo_data"/platform/folder/"assets"
+assets_dir = app_dir/"storage"/"assets"/platform
 
 WIDGET_TOOLS = {"visualize:show_widget"}
 
@@ -46,11 +42,6 @@ def fetch_data(url):
 
         if response.status_code == 200:
             parsed_json = response.json()
-
-            scrape_data.parent.mkdir(parents=True, exist_ok=True)
-
-            with open(scrape_data, "w", encoding="utf-8") as f:
-                json.dump(parsed_json, f, indent=4, ensure_ascii=False)
 
             return _ok(parsed_json)
         else:
@@ -408,11 +399,6 @@ def convert_data_to_scheme(data, url, messages, assets_saved, assets_skipped, ha
         "assets_skipped": assets_skipped,
         "messages": messages,
     }
-
-    chat_data.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(chat_data, 'w', encoding="utf-8") as f:
-        json.dump(json_schema, f, indent=4, ensure_ascii=False)
 
     return json_schema
 

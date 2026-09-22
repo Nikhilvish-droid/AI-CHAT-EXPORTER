@@ -1,21 +1,25 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pathlib import Path
+from pydantic import BaseModel
+from starlette.background import BackgroundTask
 from urllib.parse import urlparse
+from uuid import uuid4
 import re
 
-from backend.app.services.chatgpt_scraper.chatgptscraper import load_chatgpt_chat
-from backend.app.services.gemini_scraper.geminiscraper import load_gemini_chat
-from backend.app.services.claude_scraper.claudescraper import load_claude_chat
+from app.services.chatgpt_scraper.chatgptscraper import load_chatgpt_chat
+from app.services.gemini_scraper.geminiscraper import load_gemini_chat
+from app.services.claude_scraper.claudescraper import load_claude_chat
 
-from backend.app.services import assets as assetlib
-from backend.app.services.codeblocks import extract_code_blocks
-from backend.app.services.chunks import create_chunks
-from backend.app.services.embedding import create_embeddings
-from backend.app.services.chroma import add_chunks_to_chroma
-from backend.app.services.retrieval import retrieve_data
-from backend.app.services.llm import openai_llm
-from backend.app.services.pdfgenerator import generate_pdf
+from app.services import assets as assetlib
+from app.services import session_store
+from app.services.codeblocks import extract_code_blocks
+from app.services.chunks import create_chunks
+from app.services.embedding import create_embeddings
+from app.services.chroma import add_chunks_to_chroma
+from app.services.retrieval import retrieve_data
+from app.services.llm import openai_llm
+from app.services.pdfgenerator import generate_pdf
 
 
 def safe_segment(value, fallback="memory_export"):
@@ -24,7 +28,7 @@ def safe_segment(value, fallback="memory_export"):
     return cleaned[:80] or fallback
 
 
-router = APIRouter()
+router = APIRouter(prefix="/api")
 
 output_dir = Path(__file__).parent.parent / "output"
 
@@ -36,6 +40,14 @@ ALLOWED_HOSTS = {
     "g.co": ("gemini", load_gemini_chat),
     "claude.ai": ("claude", load_claude_chat),
 }
+
+
+class ScrapeRequest(BaseModel):
+    url: str
+
+
+class ConversationRequest(BaseModel):
+    conversation_id: str
 
 
 def pick_scraper(url):
@@ -71,12 +83,27 @@ def stage(description, func, *args, **kwargs):
         raise HTTPException(status_code=500, detail=f"{description} failed: {e}")
 
 
-@router.post("/submit-link")
-def submit_link(url: str):
-    if not isinstance(url, str) or not url.strip():
+def require_session(conversation_id):
+    session = session_store.load(conversation_id)
+
+    if not session:
+        raise HTTPException(
+            status_code=404,
+            detail="Unknown conversation_id - call /api/scrape again",
+        )
+
+    return session
+
+
+# Stage 1 of 4 ("Reading the conversation…"): fetch the chat and get it ready
+# to be summarised - scrape, pull attachments/code blocks, and chunk the text.
+@router.post("/scrape")
+def scrape(body: ScrapeRequest):
+    url = body.url.strip() if body.url else ""
+
+    if not url:
         raise HTTPException(status_code=422, detail="url is required")
 
-    url = url.strip()
     platform, loader, problem = pick_scraper(url)
 
     if problem:
@@ -110,7 +137,34 @@ def submit_link(url: str):
     if not chunks.get("ok"):
         raise HTTPException(status_code=422, detail=chunks.get("message") or "Chunking failed")
 
-    embeddings = stage("Embedding the conversation", create_embeddings, chunks["chunks"])
+    session_store.save(
+        conversation_id,
+        url=chat_data.get("source_url") or url,
+        title=chat_data.get("title"),
+        platform=platform_name,
+        manifest=manifest,
+        code_blocks=code_blocks,
+        chunks=chunks["chunks"],
+        messages_skipped=chunks.get("messages_without_chunk") or [],
+    )
+
+    return {
+        "conversation_id": conversation_id,
+        "platform": platform_name,
+        "title": chat_data.get("title"),
+        "images_embedded": len(manifest["embedded"]),
+        "files_missing": len(manifest["missing"]),
+        "code_blocks": len(code_blocks),
+    }
+
+
+# Stage 2 of 4 ("Finding what matters…"): embed the chunks, store them in the
+# vector database, then pull back the most relevant ones per section.
+@router.post("/analyze")
+def analyze(body: ConversationRequest):
+    session = require_session(body.conversation_id)
+
+    embeddings = stage("Embedding the conversation", create_embeddings, session["chunks"])
 
     if not embeddings.get("ok"):
         raise HTTPException(status_code=500, detail=embeddings.get("message") or "Embedding failed")
@@ -133,8 +187,19 @@ def submit_link(url: str):
             detail="Retrieval returned no context for this conversation",
         )
 
+    session_store.save(body.conversation_id, retrieval_data=retrieval_data)
+
+    return {"conversation_id": body.conversation_id, "ok": True}
+
+
+# Stage 3 of 4 ("Writing the sections…"): ask the LLM to turn the retrieved
+# chunks into the four-section memory document.
+@router.post("/write")
+def write(body: ConversationRequest):
+    session = require_session(body.conversation_id)
+
     try:
-        final_data = openai_llm(retrieval_data)
+        final_data = openai_llm(session["retrieval_data"])
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Document generation failed: {e}")
 
@@ -144,38 +209,61 @@ def submit_link(url: str):
             detail="Document generation returned an unexpected format",
         )
 
+    session_store.save(body.conversation_id, final_data=final_data)
+
+    return {"conversation_id": body.conversation_id, "ok": True}
+
+
+# Stage 4 of 4 ("Binding the PDF…"): render the document and hand back the file.
+@router.post("/export")
+def export(body: ConversationRequest):
+    session = require_session(body.conversation_id)
+    conversation_id = body.conversation_id
+
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_file = output_dir / f"{safe_segment(conversation_id, 'memory_export')}.pdf"
+    # Unique per request, not just per conversation_id: two people exporting the
+    # same shared link at the same time must not write over each other's file
+    # while one of them is still being streamed back.
+    output_file = output_dir / f"{safe_segment(conversation_id, 'memory_export')}-{uuid4().hex[:8]}.pdf"
 
     stage(
         "PDF generation",
         generate_pdf,
-        title=chat_data.get("title"),
-        source_url=chat_data.get("source_url") or url,
-        platform=platform_name,
-        final_data=final_data,
+        title=session.get("title"),
+        source_url=session.get("url"),
+        platform=session.get("platform"),
+        final_data=session.get("final_data"),
         output_file=output_file,
-        assets=manifest,
-        code_blocks=code_blocks,
+        assets=session.get("manifest"),
+        code_blocks=session.get("code_blocks"),
     )
 
     if not output_file.exists():
         raise HTTPException(status_code=500, detail="PDF was not written")
 
+    manifest = session.get("manifest") or {"embedded": [], "missing": []}
+    code_blocks = session.get("code_blocks") or []
+    messages_skipped = session.get("messages_skipped") or []
+
+    session_store.drop(conversation_id)
+
     return FileResponse(
         path=output_file,
         media_type="application/pdf",
-        filename=f"{safe_segment(chat_data.get('title'), 'memory_export')}.pdf",
+        filename=f"{safe_segment(session.get('title'), 'memory_export')}.pdf",
+        # Each export writes its own file (see the uuid suffix above), so it's
+        # safe to delete it once this response has finished streaming.
+        background=BackgroundTask(output_file.unlink),
         headers={
             "Access-Control-Expose-Headers": (
                 "X-Conversation-Id, X-Platform, X-Images-Embedded, "
                 "X-Files-Missing, X-Code-Blocks, X-Messages-Skipped"
             ),
             "X-Conversation-Id": str(conversation_id),
-            "X-Platform": str(platform_name),
+            "X-Platform": str(session.get("platform")),
             "X-Images-Embedded": str(len(manifest["embedded"])),
             "X-Files-Missing": str(len(manifest["missing"])),
             "X-Code-Blocks": str(len(code_blocks)),
-            "X-Messages-Skipped": str(len(chunks.get("messages_without_chunk") or [])),
+            "X-Messages-Skipped": str(len(messages_skipped)),
         },
     )

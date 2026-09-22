@@ -11,9 +11,9 @@ ScrollTrigger.config({ ignoreMobileResize: true })
 
 // Small puffs that drift near the rim once the cave is in frame.
 const AMBIENT_CLOUDS = [
-  { src: '/clouds02.png', top: '20%', left: '4%', width: '22%', opacity: 0.5, drift: 14 },
-  { src: '/clouds05.png', top: '12%', left: '70%', width: '26%', opacity: 0.45, drift: 18 },
-  { src: '/clouds09.png', top: '60%', left: '74%', width: '22%', opacity: 0.4, drift: 16 },
+  { src: '/clouds02.webp', top: '20%', left: '4%', width: '22%', opacity: 0.5, drift: 14 },
+  { src: '/clouds05.webp', top: '12%', left: '70%', width: '26%', opacity: 0.45, drift: 18 },
+  { src: '/clouds09.webp', top: '60%', left: '74%', width: '22%', opacity: 0.4, drift: 16 },
 ]
 
 // The bank of cloud the page opens inside — dense enough at rest that the
@@ -22,20 +22,20 @@ const AMBIENT_CLOUDS = [
 // clouds move more, giving the bank a sense of layered thickness).
 const FOG_CLOUDS = [
   // back layer: large, soft, fills the gaps between the foreground puffs
-  { src: '/clouds03.png', top: '-30%', left: '-35%', width: '120%', dx: -30, dy: -18, depth: 0.4 },
-  { src: '/clouds03.png', top: '20%', left: '10%', width: '130%', dx: 10, dy: 22, depth: 0.4 },
-  { src: '/clouds01.png', top: '45%', left: '-25%', width: '110%', dx: -34, dy: 20, depth: 0.5 },
-  { src: '/clouds01.png', top: '-25%', left: '30%', width: '105%', dx: 14, dy: -30, depth: 0.5 },
+  { src: '/clouds03.webp', top: '-30%', left: '-35%', width: '120%', dx: -30, dy: -18, depth: 0.4 },
+  { src: '/clouds03.webp', top: '20%', left: '10%', width: '130%', dx: 10, dy: 22, depth: 0.4 },
+  { src: '/clouds01.webp', top: '45%', left: '-25%', width: '110%', dx: -34, dy: 20, depth: 0.5 },
+  { src: '/clouds01.webp', top: '-25%', left: '30%', width: '105%', dx: 14, dy: -30, depth: 0.5 },
   // foreground layer: denser, more contrast, the ones that visibly "part"
-  { src: '/clouds07.png', top: '-16%', left: '-15%', width: '88%', dx: -38, dy: -20, depth: 0.9 },
-  { src: '/clouds11.png', top: '-10%', left: '35%', width: '82%', dx: 6, dy: -34, depth: 0.9 },
-  { src: '/clouds09.png', top: '-14%', left: '62%', width: '85%', dx: 40, dy: -22, depth: 0.9 },
-  { src: '/clouds11.png', top: '30%', left: '-20%', width: '86%', dx: -42, dy: 4, depth: 1 },
-  { src: '/clouds05.png', top: '32%', left: '38%', width: '70%', dx: 2, dy: 6, depth: 1 },
-  { src: '/clouds09.png', top: '28%', left: '68%', width: '80%', dx: 42, dy: 2, depth: 1 },
-  { src: '/clouds07.png', top: '58%', left: '-18%', width: '85%', dx: -38, dy: 28, depth: 0.9 },
-  { src: '/clouds05.png', top: '62%', left: '20%', width: '78%', dx: 4, dy: 36, depth: 0.9 },
-  { src: '/clouds11.png', top: '56%', left: '55%', width: '84%', dx: 38, dy: 26, depth: 0.9 },
+  { src: '/clouds07.webp', top: '-16%', left: '-15%', width: '88%', dx: -38, dy: -20, depth: 0.9 },
+  { src: '/clouds11.webp', top: '-10%', left: '35%', width: '82%', dx: 6, dy: -34, depth: 0.9 },
+  { src: '/clouds09.webp', top: '-14%', left: '62%', width: '85%', dx: 40, dy: -22, depth: 0.9 },
+  { src: '/clouds11.webp', top: '30%', left: '-20%', width: '86%', dx: -42, dy: 4, depth: 1 },
+  { src: '/clouds05.webp', top: '32%', left: '38%', width: '70%', dx: 2, dy: 6, depth: 1 },
+  { src: '/clouds09.webp', top: '28%', left: '68%', width: '80%', dx: 42, dy: 2, depth: 1 },
+  { src: '/clouds07.webp', top: '58%', left: '-18%', width: '85%', dx: -38, dy: 28, depth: 0.9 },
+  { src: '/clouds05.webp', top: '62%', left: '20%', width: '78%', dx: 4, dy: 36, depth: 0.9 },
+  { src: '/clouds11.webp', top: '56%', left: '55%', width: '84%', dx: 38, dy: 26, depth: 0.9 },
 ]
 
 // top/left/width percentages above are sized against a wide/short desktop
@@ -47,16 +47,16 @@ const FOG_CLOUDS = [
 // ratio, actually spans a meaningful share of a tall viewport) and a top
 // spread that runs from above the frame to well past its bottom edge.
 const FOG_CLOUDS_MOBILE = [
-  { src: '/clouds03.png', top: '-22%', left: '-55%', width: '230%', dx: -20, dy: -14, depth: 0.4 },
-  { src: '/clouds01.png', top: '4%', left: '-40%', width: '210%', dx: 24, dy: -10, depth: 0.5 },
-  { src: '/clouds07.png', top: '-6%', left: '-20%', width: '190%', dx: -26, dy: -16, depth: 0.9 },
-  { src: '/clouds11.png', top: '16%', left: '-45%', width: '215%', dx: 22, dy: 12, depth: 0.9 },
-  { src: '/clouds09.png', top: '30%', left: '-15%', width: '195%', dx: -22, dy: 14, depth: 1 },
-  { src: '/clouds05.png', top: '42%', left: '-35%', width: '200%', dx: 18, dy: -10, depth: 1 },
-  { src: '/clouds01.png', top: '56%', left: '-20%', width: '190%', dx: -24, dy: 16, depth: 0.5 },
-  { src: '/clouds07.png', top: '68%', left: '-45%', width: '215%', dx: 26, dy: 10, depth: 0.9 },
-  { src: '/clouds11.png', top: '80%', left: '-15%', width: '195%', dx: -20, dy: -12, depth: 0.9 },
-  { src: '/clouds09.png', top: '92%', left: '-40%', width: '210%', dx: 22, dy: 8, depth: 1 },
+  { src: '/clouds03.webp', top: '-22%', left: '-55%', width: '230%', dx: -20, dy: -14, depth: 0.4 },
+  { src: '/clouds01.webp', top: '4%', left: '-40%', width: '210%', dx: 24, dy: -10, depth: 0.5 },
+  { src: '/clouds07.webp', top: '-6%', left: '-20%', width: '190%', dx: -26, dy: -16, depth: 0.9 },
+  { src: '/clouds11.webp', top: '16%', left: '-45%', width: '215%', dx: 22, dy: 12, depth: 0.9 },
+  { src: '/clouds09.webp', top: '30%', left: '-15%', width: '195%', dx: -22, dy: 14, depth: 1 },
+  { src: '/clouds05.webp', top: '42%', left: '-35%', width: '200%', dx: 18, dy: -10, depth: 1 },
+  { src: '/clouds01.webp', top: '56%', left: '-20%', width: '190%', dx: -24, dy: 16, depth: 0.5 },
+  { src: '/clouds07.webp', top: '68%', left: '-45%', width: '215%', dx: 26, dy: 10, depth: 0.9 },
+  { src: '/clouds11.webp', top: '80%', left: '-15%', width: '195%', dx: -20, dy: -12, depth: 0.9 },
+  { src: '/clouds09.webp', top: '92%', left: '-40%', width: '210%', dx: 22, dy: 8, depth: 1 },
 ]
 
 export default function CaveHero() {
@@ -202,6 +202,7 @@ export default function CaveHero() {
 
       const tl = gsap.timeline({
         scrollTrigger: {
+          id: 'cave-reveal',
           trigger: wrapRef.current,
           start: 'top top',
           end: '+=650%',
@@ -267,17 +268,17 @@ export default function CaveHero() {
   return (
     <section className="cave-hero-wrap" ref={wrapRef} id="hero">
       <div className="cave-hero-pin">
-        <img className="cave-layer cave-layer--sky" ref={skyRef} src="/Bg_Sky.png" alt="" />
+        <img className="cave-layer cave-layer--sky" ref={skyRef} src="/Bg_Sky.webp" alt="" />
         <img
           className="cave-layer cave-layer--mountain"
           ref={mountainRef}
-          src="/Mountains.png"
+          src="/Mountains.webp"
           alt=""
         />
         <img
           className="cave-layer cave-layer--explorer"
           ref={explorerRef}
-          src="/Explorer-boy.png"
+          src="/Explorer-boy.webp"
           alt=""
         />
 
@@ -292,7 +293,7 @@ export default function CaveHero() {
           />
         ))}
 
-        <img className="cave-layer cave-layer--cave" ref={caveRef} src="/Cave.png" alt="" />
+        <img className="cave-layer cave-layer--cave" ref={caveRef} src="/Cave.webp" alt="" />
 
         <div className="reveal-headline" ref={headlineRef}>
           <h1>

@@ -11,3 +11,6 @@ venv/
 env/
 
 app/chroma_data/
+app/demo_data/
+app/output/
+app/storage/

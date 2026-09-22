@@ -25,13 +25,13 @@ const BACK_STATS = [
   { value: '~6%', label: 'of a full context window — enough to keep every decision' },
 ]
 
-function FlowArrow({ className }) {
+function FlowArrow({ className, strokeWidth = 2 }) {
   return (
     <svg viewBox="0 0 16 24" className={className} aria-hidden="true">
       <path
         d="M8 0v18M2 14l6 7 6-7"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth={strokeWidth}
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -53,13 +53,16 @@ function FrontVisual() {
             alt="Claude's upgrade dialog after hitting the message limit mid-conversation"
           />
         </div>
-        <FlowArrow className="ps-shot-arrow" />
-        <div className="ps-shot ps-shot--newchat">
-          <img
-            className="ps-shot-img"
-            src="/newchat.png"
-            alt="A new chat replying that it has no access to the previous conversation"
-          />
+        <FlowArrow className="ps-shot-arrow ps-shot-arrow--bold" strokeWidth={3} />
+        <div className="ps-shot-newchat-wrap">
+          <span className="ps-shot-caption">Starting a new agent on a different platform…</span>
+          <div className="ps-shot ps-shot--newchat">
+            <img
+              className="ps-shot-img"
+              src="/newchat.png"
+              alt="A new chat replying that it has no access to the previous conversation"
+            />
+          </div>
         </div>
       </div>
     </div>

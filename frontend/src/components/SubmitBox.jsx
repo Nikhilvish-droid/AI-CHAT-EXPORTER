@@ -1,13 +1,16 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { convertConversation } from '../api'
 
 // Mirrors backend/app/routers/conversation.py::ALLOWED_HOSTS so bad links
-// never leave the browser. Keep this list in sync with the backend.
+// never leave the browser. Keep this list in sync with the 
 const PLATFORMS = [
   { key: 'chatgpt', label: 'ChatGPT', color: '#74e0c4', hosts: ['chatgpt.com', 'chat.openai.com'] },
   { key: 'gemini', label: 'Gemini', color: '#8ab4ff', hosts: ['gemini.google.com', 'share.gemini.google', 'g.co'] },
   { key: 'claude', label: 'Claude', color: '#e8a37c', hosts: ['claude.ai'] },
 ]
 
+// One label per backend call in convertConversation() (src/api.js):
+// scrape -> analyze -> write -> export.
 const STAGE_LABELS = [
   'Reading the conversation…',
   'Finding what matters…',
@@ -31,10 +34,9 @@ function detectPlatform(url) {
 
 /**
  * The box the figure "holds" at the end of the cave reveal — this is the
- * actual product entry point. Demo-only submit for now (see
- * runDemoSubmit): swap it for a real `fetch('/submit-link', ...)` call
- * against backend/app/routers/conversation.py when wiring the backend up;
- * everything else (chip, spinner, receipt, errors) keeps working as-is.
+ * actual product entry point. Submitting a link runs the real backend
+ * pipeline (see convertConversation in src/api.js), one stage per request,
+ * and ends with the generated PDF ready to download.
  */
 export default function SubmitBox() {
   const [value, setValue] = useState('')
@@ -42,33 +44,19 @@ export default function SubmitBox() {
   const [stageIndex, setStageIndex] = useState(0)
   const [receipt, setReceipt] = useState(null)
   const [errorMessage, setErrorMessage] = useState('')
-  const timers = useRef([])
+  const [downloadUrl, setDownloadUrl] = useState(null)
 
   const platform = useMemo(() => detectPlatform(value), [value])
 
-  const clearTimers = () => {
-    timers.current.forEach(clearTimeout)
-    timers.current = []
-  }
-
-  const runDemoSubmit = () => {
-    setStatus('loading')
-    setStageIndex(0)
-    STAGE_LABELS.forEach((_, i) => {
-      if (i === 0) return
-      timers.current.push(setTimeout(() => setStageIndex(i), i * 900))
+  const releaseDownload = () => {
+    setDownloadUrl((current) => {
+      if (current) URL.revokeObjectURL(current)
+      return null
     })
-    timers.current.push(
-      setTimeout(() => {
-        setStatus('success')
-        setReceipt({ platform: platform.label, codeBlocks: 12, images: 3, missing: 1 })
-      }, STAGE_LABELS.length * 900 + 350),
-    )
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    clearTimers()
     if (!value.trim()) {
       setStatus('invalid')
       setErrorMessage('Paste a share link to get started.')
@@ -79,12 +67,31 @@ export default function SubmitBox() {
       setErrorMessage("That doesn't look like a supported share link.")
       return
     }
+
     setErrorMessage('')
-    runDemoSubmit()
+    setStatus('loading')
+    setStageIndex(0)
+
+    try {
+      const result = await convertConversation(value.trim(), setStageIndex)
+      releaseDownload()
+      setDownloadUrl(URL.createObjectURL(result.blob))
+      setReceipt({
+        platform: platform.label,
+        filename: result.filename,
+        codeBlocks: result.codeBlocks,
+        images: result.imagesEmbedded,
+        missing: result.filesMissing,
+      })
+      setStatus('success')
+    } catch (err) {
+      setStatus('invalid')
+      setErrorMessage(err.message || 'Something went wrong. Please try again.')
+    }
   }
 
   const reset = () => {
-    clearTimers()
+    releaseDownload()
     setStatus('idle')
     setReceipt(null)
     setValue('')
@@ -103,9 +110,13 @@ export default function SubmitBox() {
             {receipt.codeBlocks} code blocks · {receipt.images} images embedded
           </p>
           <div className="submit-receipt-actions">
-            <button type="button" className="submit-btn submit-btn--primary" disabled>
+            <a
+              href={downloadUrl}
+              download={receipt.filename}
+              className="submit-btn submit-btn--primary"
+            >
               Download PDF
-            </button>
+            </a>
             <button type="button" className="submit-btn submit-btn--ghost" onClick={reset}>
               Convert another
             </button>

@@ -6,18 +6,12 @@ from datetime import datetime, timezone
 import re
 from curl_cffi import requests as cffi_requests
 
-from backend.app.services import assets as assetlib
+from app.services import assets as assetlib
 
-folder = "nontext-2"
 app_dir = Path(__file__).parent.parent.parent
 platform = "chatgpt"
 
-html_file = app_dir/"demo_data"/platform/folder/"scrape.html"
-script_file = app_dir/"demo_data"/platform/folder/"script.txt"
-enqueue = app_dir/"demo_data"/platform/folder/"enqueue.json"
-chat_json = app_dir/"demo_data"/platform/folder/"chat_data.json"
-decoded_json = app_dir/"demo_data"/platform/folder/"decoded.txt"
-assets_dir = app_dir/"demo_data"/platform/folder/"assets"
+assets_dir = app_dir/"storage"/"assets"/platform
 
 KEEP_CONTENT_TYPES = {"text", "multimodal_text"}
 
@@ -43,22 +37,6 @@ def _fail(message: str):
     return {"ok": False, "message": message}
 
 
-def dump_debug(path, text):
-    """Write a debug copy of an intermediate step.
-
-    These files are only for inspection, so a missing folder or a read-only
-    disk must never abort a scrape that is otherwise working.
-    """
-
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-
-        with open(path, "w", encoding="utf-8") as file:
-            file.write(text)
-    except Exception:
-        pass
-
-
 def html_fetcher(url: str):
     problem = "no browser profile accepted"
 
@@ -82,16 +60,12 @@ def html_fetcher(url: str):
             problem = f"empty html returned as {profile}"
             continue
 
-        dump_debug(html_file, html)
-
         return _ok(html)
 
     return _fail(f"html_fetcher: {problem}")
 
 
 def script_parser(html_data):
-    # with open(html_file, 'r', encoding="utf-8") as file:
-    #     html_data = file.read()
     if not isinstance(html_data, str) or not html_data:
         return _fail("script_parser: invalid html_data")
 
@@ -110,8 +84,6 @@ def script_parser(html_data):
 
     if not scripts:
         return _fail("script_parser: streamController.enqueue script not found")
-
-    dump_debug(script_file, "\n".join(scripts))
 
     return _ok(scripts)
 
@@ -206,8 +178,6 @@ def extract_payload(scripts):
     if not chunks:
         return _fail("extract_payload: enqueue payload not found")
 
-    dump_debug(enqueue, "\n".join(chunks))
-
     candidates = [data for data in (parse_chunk(chunk) for chunk in chunks) if data]
 
     # Long conversations can be split across several enqueue calls, so fall back
@@ -241,12 +211,6 @@ def restore_utf8(text: str) -> str:
         return text.encode("latin-1").decode("utf-8")
     except (UnicodeEncodeError, UnicodeDecodeError):
         return text
-
-
-# def json_load():
-#     with open(enqueue, 'r', encoding="utf-8") as file:
-#         data = json.load(file)
-#     return data
 
 
 def decode(data):
@@ -735,7 +699,5 @@ def load_chatgpt_chat(url):
         "assets_skipped": assets_skipped,
         "messages":messages
     }
-
-    dump_debug(chat_json, json.dumps(result, indent=4, ensure_ascii=False))
 
     return {"data": result, "ok": True}

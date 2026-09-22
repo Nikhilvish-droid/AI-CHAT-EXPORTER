@@ -1,6 +1,7 @@
 import io
 import json
 import re
+import unicodedata
 from pathlib import Path
 from datetime import datetime
 from xml.sax.saxutils import escape
@@ -23,8 +24,8 @@ from reportlab.platypus import (
 )
 from reportlab.platypus.flowables import HRFlowable
 
-from backend.app.services import assets as assetlib
-from backend.app.services.codeblocks import normalize_newlines
+from app.services import assets as assetlib
+from app.services.codeblocks import normalize_newlines
 
 BASE_DIR = Path(__file__).parent.parent
 OUTPUT_FILE = BASE_DIR / "output" / "memory_export.pdf"
@@ -45,6 +46,12 @@ MAX_CELL_CHARS = 300
 
 MAX_IMAGE_WIDTH = 150 * mm
 MAX_IMAGE_HEIGHT = 185 * mm
+
+# Assigned locally when a manifest entry has a saved path but the file could
+# not actually be turned into a PDF image (missing on disk, corrupted,
+# unsupported despite its declared mime type). Distinct from assetlib's own
+# skip reasons, which are all decided before the file is ever opened.
+SKIP_UNREADABLE = "pdf_unreadable"
 
 INK = colors.HexColor("#1F1F1D")
 MUTED = colors.HexColor("#6B6A64")
@@ -108,11 +115,9 @@ text { font-family: Helvetica; }
 
 
 def clean_text(text):
+    text = str(text)
+
     replacements = {
-        "‑": "-",
-        "–": "-",
-        "—": "-",
-        "−": "-",
         " ": " ",
         "‘": "'",
         "’": "'",
@@ -123,7 +128,15 @@ def clean_text(text):
     for old, new in replacements.items():
         text = text.replace(old, new)
 
-    return text
+    # Helvetica/Courier (WinAnsi encoding) only render a handful of dash
+    # characters. LLM output regularly uses others - HYPHEN (U+2010) in
+    # particular - that reportlab has no glyph for and draws as a tofu box.
+    # Normalizing every Unicode dash-punctuation codepoint to ASCII "-"
+    # avoids that instead of chasing individual characters one at a time.
+    return "".join(
+        "-" if unicodedata.category(ch) == "Pd" else ch
+        for ch in text
+    )
 
 
 def build_styles():
@@ -297,6 +310,43 @@ def is_art_line(line):
     return False
 
 
+CODE_LANGUAGE_HINTS = {
+    "python", "py", "javascript", "js", "jsx", "typescript", "ts", "tsx",
+    "java", "c", "cpp", "c++", "csharp", "c#", "go", "golang", "rust",
+    "ruby", "php", "sql", "bash", "sh", "shell", "zsh", "powershell",
+    "json", "yaml", "yml", "xml", "html", "css", "scss", "kotlin",
+    "swift", "scala", "r", "matlab", "perl", "dart", "lua",
+}
+
+CODE_HINT_PATTERN = re.compile(
+    r"[{};]|=>|:=|"
+    r"^\s*(def|class|import|from|const|let|var)\s+\w|"
+    r"^\s*function\s*\w*\s*\(|"
+    r"^\s*(#!|//|/\*|\$\s|>>>)",
+    re.MULTILINE,
+)
+
+
+def looks_like_code(lines, language=""):
+    """Tell a real fenced code/diagram block apart from prose the model
+    wrapped in ``` by mistake, so the latter still gets markdown rendering
+    (bullets, bold) instead of being dumped as raw monospaced text.
+    """
+
+    if language and language.lower().strip("`") in CODE_LANGUAGE_HINTS:
+        return True
+
+    non_blank = [line for line in lines if line.strip()]
+
+    if not non_blank:
+        return False
+
+    if sum(1 for line in non_blank if is_art_line(line)) >= max(1, len(non_blank) // 3):
+        return True
+
+    return len(CODE_HINT_PATTERN.findall("\n".join(non_blank))) >= 2
+
+
 def split_blocks(content):
     lines = normalize_newlines(str(content)).split("\n")
     blocks = []
@@ -316,15 +366,20 @@ def split_blocks(content):
                 index += 1
 
             index += 1
-            blocks.append(("code", {"language": language, "lines": body}))
+
+            if looks_like_code(body, language):
+                blocks.append(("code", {"language": language, "lines": body}))
+            else:
+                # A stray/misplaced fence around ordinary prose - parse its
+                # contents as normal markdown instead of a raw code block.
+                blocks.extend(split_blocks("\n".join(body)))
+
             continue
 
         if is_art_line(line):
             body = []
 
-            while index < len(lines) and (is_art_line(lines[index]) or (lines[index].strip() and body)):
-                if not is_art_line(lines[index]) and not lines[index].strip():
-                    break
+            while index < len(lines) and is_art_line(lines[index]):
                 body.append(lines[index])
                 index += 1
 
@@ -673,27 +728,47 @@ def image_flowable(entry, base_dir, max_width=None, max_height=None):
                 source = str(file_path)
 
         return Image(source, width=draw_width, height=draw_height)
-    except Exception:
+    except Exception as e:
+        print(f"pdfgenerator: could not embed image {entry.get('path')!r}: {e}")
         return None
 
 
-def image_grid(embedded, base_dir, styles, columns=2):
+def resolve_images(embedded, base_dir, styles, columns=2):
+    """Try to embed every asset the manifest marked as downloaded.
+
+    A manifest entry having a path only means the scraper wrote *some* file -
+    it does not guarantee the file is still there, or that it is a valid,
+    decodable image by the time the PDF is built. Anything that fails here is
+    reported back so the caller can list it as not included, instead of an
+    image silently disappearing from the document with no trace at all.
+
+    Returns (cells, failed, cell_width) where cells is ready for image_grid().
+    """
+
     gutter = 6 * mm
     cell_width = (CONTENT_WIDTH - gutter * (columns - 1)) / columns
     cell_height = 50 * mm
 
     cells = []
+    failed = []
 
     for entry in embedded:
         flowable = image_flowable(entry, base_dir, cell_width - 4 * mm, cell_height)
 
         if flowable is None:
+            failed.append(entry)
             continue
 
         cells.append([
             flowable,
             Paragraph(escape(clip_cell(assetlib.describe(entry))), styles["caption"]),
         ])
+
+    return cells, failed, cell_width
+
+
+def image_grid(cells, cell_width, columns=2):
+    gutter = 6 * mm
 
     if not cells:
         return []
@@ -854,6 +929,8 @@ def missing_table(missing, styles):
             label = "Format cannot be embedded in a PDF"
         elif reason == assetlib.SKIP_TOO_LARGE:
             label = "Larger than the embed limit"
+        elif reason == SKIP_UNREADABLE:
+            label = "Downloaded, but the file could not be read while building the PDF"
         else:
             label = "Not available in the shared link"
 
@@ -908,7 +985,9 @@ def generate_pdf(
 
     assets = assets or {"embedded": [], "missing": []}
     embedded = assets.get("embedded") or []
-    missing = assets.get("missing") or []
+    # Copied so a failed embed (see resolve_images below) can be folded in
+    # without mutating the caller's manifest.
+    missing = list(assets.get("missing") or [])
     reupload = assetlib.reupload_candidates(missing)
 
     output_file = Path(output_file)
@@ -928,6 +1007,18 @@ def generate_pdf(
     )
 
     styles = build_styles()
+
+    # Resolved before the "Files not included" table is built, so a manifest
+    # entry that has a path but turned out to be unreadable at render time
+    # (missing/corrupted file, decode failure) is reported there instead of
+    # silently vanishing from the document.
+    image_cells, failed_embeds, image_cell_width = resolve_images(embedded, BASE_DIR, styles)
+
+    for entry in failed_embeds:
+        entry["skip_reason"] = SKIP_UNREADABLE
+
+    missing = missing + failed_embeds
+
     story = []
 
     story.append(Paragraph("AI CHAT EXPORTER", styles["title"]))
@@ -1033,7 +1124,7 @@ def generate_pdf(
         for item in code_blocks:
             story.extend(verbatim_block(item, styles))
 
-    grid = image_grid(embedded, BASE_DIR, styles)
+    grid = image_grid(image_cells, image_cell_width)
 
     if grid:
         story.append(

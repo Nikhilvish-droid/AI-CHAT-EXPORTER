@@ -6,7 +6,7 @@ import time
 
 from openai import OpenAI
 
-from backend.app.services.codeblocks import normalize_newlines
+from app.services.codeblocks import normalize_newlines
 
 load_dotenv()
 
@@ -63,8 +63,6 @@ OUTPUT_WORD_BUDGET = int(MAX_OUTPUT_TOKENS * 0.55)
 CHARS_PER_TOKEN = 3.5
 
 PROMPT_TOKEN_BUDGET = CONTEXT_TOKEN_LIMIT - MAX_OUTPUT_TOKENS - SAFETY_MARGIN_TOKENS
-# retrieved_file = app_dir/"demo_data"/"chatgpt"/folder/"retrieved_data.json"
-# prompt_file = app_dir/"llm_prompt"/"prompt.txt"
 
 
 

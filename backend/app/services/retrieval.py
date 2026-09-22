@@ -2,7 +2,7 @@ import re
 
 from rank_bm25 import BM25Okapi
 
-from backend.app.services.chroma import get_client, collection_name
+from app.services.chroma import get_client, collection_name
 
 TOP_SEMANTIC = 15
 TOP_KEYWORD = 15

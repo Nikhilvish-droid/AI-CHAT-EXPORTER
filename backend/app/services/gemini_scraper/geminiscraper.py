@@ -1,7 +1,6 @@
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
 from pathlib import Path
-import json
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone
 import re
@@ -10,15 +9,12 @@ import time
 import hashlib
 
 
-from backend.app.services import assets as assetlib
+from app.services import assets as assetlib
 
 app_dir = Path(__file__).parent.parent.parent
-folder = "nontext-1"
 platform = "gemini"
 
-html_file = app_dir / "demo_data" / platform / folder / "scrape.html"
-chat = app_dir / "demo_data" / platform / folder / "chat_data.json"
-assets_dir = app_dir / "demo_data" / platform / folder / "assets"
+assets_dir = app_dir / "storage" / "assets" / platform
 
 TURN_SELECTOR = "share-turn-viewer"
 
@@ -162,15 +158,6 @@ def capture_page(url):
 
     if not isinstance(render_html, str) or not render_html.strip():
         return _fail("capture_page: empty html returned")
-
-    try:
-        html_file.parent.mkdir(parents=True, exist_ok=True)
-
-        with open(html_file, "w", encoding="utf-8") as f:
-            f.write(render_html)
-
-    except Exception as e:
-        return _fail(f"capture_page: could not write html file: {e}")
 
     return _ok({"html": render_html, "assets": assets})
 
@@ -533,15 +520,6 @@ def load_gemini_chat(url):
         "assets_skipped": assets_skipped,
         "messages": messages,
     }
-
-    # Debug copy only - a failed write must not discard a conversation we have.
-    try:
-        chat.parent.mkdir(parents=True, exist_ok=True)
-
-        with open(chat, "w", encoding="utf-8") as f:
-            json.dump(result, f, indent=4, ensure_ascii=False)
-    except Exception:
-        pass
 
     return {"ok": True, "data": result}
 

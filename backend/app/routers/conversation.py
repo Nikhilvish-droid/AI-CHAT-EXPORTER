@@ -221,10 +221,14 @@ def export(body: ConversationRequest):
     conversation_id = body.conversation_id
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    # Unique per request, not just per conversation_id: two people exporting the
-    # same shared link at the same time must not write over each other's file
-    # while one of them is still being streamed back.
-    output_file = output_dir / f"{safe_segment(conversation_id, 'memory_export')}-{uuid4().hex[:8]}.pdf"
+    resolved_output_dir = output_dir.resolve()
+    # Use a trusted server-generated name so no user-controlled data participates
+    # in filesystem path construction.
+    output_file = (resolved_output_dir / f"memory_export-{uuid4().hex}.pdf").resolve()
+    try:
+        output_file.relative_to(resolved_output_dir)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid export path")
 
     stage(
         "PDF generation",

@@ -990,7 +990,14 @@ def generate_pdf(
     missing = list(assets.get("missing") or [])
     reupload = assetlib.reupload_candidates(missing)
 
-    output_file = Path(output_file)
+    output_root = (BASE_DIR / "output").resolve()
+    output_file = Path(output_file).resolve()
+
+    try:
+        output_file.relative_to(output_root)
+    except ValueError:
+        raise ValueError("output_file must be within the output directory")
+
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
     doc = SimpleDocTemplate(

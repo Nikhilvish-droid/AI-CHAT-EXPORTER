@@ -214,7 +214,12 @@ def export(body: ConversationRequest):
     conversation_id = body.conversation_id
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_file = output_dir / f"{safe_segment(conversation_id, 'memory_export')}-{uuid4().hex[:8]}.pdf"
+    resolved_output_dir = output_dir.resolve()
+    output_file = (resolved_output_dir / f"memory_export-{uuid4().hex}.pdf").resolve()
+    try:
+        output_file.relative_to(resolved_output_dir)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid export path")
 
     stage(
         "PDF generation",

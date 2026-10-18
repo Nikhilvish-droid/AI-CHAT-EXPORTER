@@ -29,7 +29,7 @@ def content_id(value):
     if isinstance(value, str):
         value = value.encode("utf-8")
 
-    return hashlib.sha1(value).hexdigest()[:32]
+    return hashlib.sha256(value).hexdigest()[:32]
 
 
 def fetch_data(url):

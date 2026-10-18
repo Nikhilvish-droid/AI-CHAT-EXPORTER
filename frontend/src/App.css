@@ -79,6 +79,10 @@
   height: 100svh;
   background: #050506;
   overflow: hidden;
+  /* `clip` can't be scrolled programmatically. With `hidden`, focusing the
+     input on mobile makes the browser scroll this container to reveal it,
+     which shifts the whole scene and makes the box "vanish". */
+  overflow: clip;
 }
 
 .cave-hero-pin {
@@ -86,6 +90,7 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
+  overflow: clip;
 }
 
 .cave-layer {
@@ -199,7 +204,6 @@
 }
 .cave-cloud--ambient {
   z-index: 4;
-  filter: drop-shadow(0 0 24px rgba(255, 255, 255, 0.12));
 }
 
 /* Fog curtain the page opens on — solid backing so coverage is total (the
@@ -228,10 +232,11 @@
 .fog-curtain img {
   position: absolute;
   height: auto;
-  will-change: transform, opacity;
-  /* pushes the whites toward solid so overlapping cloud layers actually
-     read as thick fog rather than translucent wisps */
-  filter: brightness(1.08) contrast(1.05);
+  will-change: transform;
+  /* (A per-image brightness/contrast filter used to sit here; on 10-13 huge
+     animated layers it forced a re-filter every frame and caused scroll
+     lag and GPU-memory blackouts on phones.) */
+  backface-visibility: hidden;
 }
 
 .scroll-cue {
@@ -252,8 +257,7 @@
   border-radius: 999px;
   /* dark backing so this stays legible whether it sits on the light fog
      curtain or the dark cave scene underneath it */
-  background: rgba(10, 9, 8, 0.28);
-  backdrop-filter: blur(6px);
+  background: rgba(10, 9, 8, 0.4);
 }
 
 .scroll-cue img {
@@ -964,6 +968,8 @@
 }
 .submit-box-wrap .submit-box {
   pointer-events: auto;
+  /* eases the lift above the mobile keyboard (see CaveHero.jsx) */
+  transition: transform 0.25s ease-out;
 }
 
 .submit-box {
@@ -1019,6 +1025,22 @@
   color: #18181b;
   font-size: 16px;
   padding: 12px 0;
+}
+.submit-paste {
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  background: #fff;
+  color: #18181b;
+  font: 600 13px/1 var(--sans);
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.submit-paste:active {
+  background: rgba(0, 0, 0, 0.06);
 }
 .submit-shell input::placeholder {
   color: rgba(20, 20, 18, 0.4);

@@ -47,16 +47,12 @@ const FOG_CLOUDS = [
 // ratio, actually spans a meaningful share of a tall viewport) and a top
 // spread that runs from above the frame to well past its bottom edge.
 const FOG_CLOUDS_MOBILE = [
-  { src: '/clouds03.webp', top: '-22%', left: '-55%', width: '230%', dx: -20, dy: -14, depth: 0.4 },
-  { src: '/clouds01.webp', top: '4%', left: '-40%', width: '210%', dx: 24, dy: -10, depth: 0.5 },
-  { src: '/clouds07.webp', top: '-6%', left: '-20%', width: '190%', dx: -26, dy: -16, depth: 0.9 },
-  { src: '/clouds11.webp', top: '16%', left: '-45%', width: '215%', dx: 22, dy: 12, depth: 0.9 },
-  { src: '/clouds09.webp', top: '30%', left: '-15%', width: '195%', dx: -22, dy: 14, depth: 1 },
-  { src: '/clouds05.webp', top: '42%', left: '-35%', width: '200%', dx: 18, dy: -10, depth: 1 },
-  { src: '/clouds01.webp', top: '56%', left: '-20%', width: '190%', dx: -24, dy: 16, depth: 0.5 },
-  { src: '/clouds07.webp', top: '68%', left: '-45%', width: '215%', dx: 26, dy: 10, depth: 0.9 },
-  { src: '/clouds11.webp', top: '80%', left: '-15%', width: '195%', dx: -20, dy: -12, depth: 0.9 },
-  { src: '/clouds09.webp', top: '92%', left: '-40%', width: '210%', dx: 22, dy: 8, depth: 1 },
+  { src: '/clouds03.webp', top: '-18%', left: '-55%', width: '230%', dx: -20, dy: -14, depth: 0.4 },
+  { src: '/clouds07.webp', top: '2%', left: '-20%', width: '190%', dx: -26, dy: -16, depth: 0.9 },
+  { src: '/clouds11.webp', top: '26%', left: '-45%', width: '215%', dx: 22, dy: 12, depth: 0.9 },
+  { src: '/clouds09.webp', top: '48%', left: '-15%', width: '195%', dx: -22, dy: 14, depth: 1 },
+  { src: '/clouds05.webp', top: '68%', left: '-35%', width: '200%', dx: 18, dy: -10, depth: 1 },
+  { src: '/clouds11.webp', top: '86%', left: '-15%', width: '195%', dx: -20, dy: -12, depth: 0.9 },
 ]
 
 export default function CaveHero() {
@@ -86,6 +82,80 @@ export default function CaveHero() {
     // Declared here (not inside the gsap.context callback below) so the
     // cleanup closure can actually reach it.
     let onPointerMove = null
+
+    // ---- Mobile keyboard support for the submit box ----
+    // Opening the on-screen keyboard shrinks the viewport by well over 25%,
+    // which ScrollTrigger treats as a real resize (ignoreMobileResize only
+    // covers address-bar-sized changes) and runs refresh(). Refresh pulls
+    // the pinned hero out of its pin-spacer and puts it back in the DOM,
+    // and that re-parenting blurs the focused input, so the keyboard flashes
+    // open and closes, and typing or pasting never gets a chance. While the
+    // box has focus, resize is dropped from the auto-refresh events, and the
+    // box is lifted above the keyboard (the pinned scene can't scroll to
+    // reveal it), centered in whatever space the keyboard leaves visible.
+    const boxEl = submitBoxRef.current
+    const boxInner = boxEl.querySelector('.submit-box')
+    let focusWidth = 0
+    let fullHeight = window.innerHeight
+    let liftFrame = 0
+    const vv = window.visualViewport
+    const liftAboveKeyboard = () => {
+      cancelAnimationFrame(liftFrame)
+      liftFrame = requestAnimationFrame(() => {
+        if (!vv || !boxInner) return
+        // Measure the wrapper, not the box itself: the box carries the lift
+        // transform (mid-transition, too), the wrapper never does, so this
+        // is always the box's untransformed position.
+        const rect = boxEl.getBoundingClientRect()
+        const visibleTop = vv.offsetTop
+        const visibleHeight = vv.height
+        // Keyboard not open (no meaningful shrink since focus) -> leave the
+        // box alone. Compared to the pre-keyboard height, not innerHeight,
+        // since some Android browsers shrink innerHeight along with it.
+        if (visibleHeight > fullHeight * 0.85) {
+          boxInner.style.transform = ''
+          return
+        }
+        const gap = 12
+        let targetTop = visibleTop + (visibleHeight - rect.height) / 2
+        // Taller than the visible space: pin its top edge just under the
+        // top instead, so the input row (near the top) stays on screen.
+        if (rect.height + gap * 2 > visibleHeight) targetTop = visibleTop + gap
+        const shift = Math.round(targetTop - rect.top)
+        boxInner.style.transform = shift ? `translateY(${shift}px)` : ''
+      })
+    }
+    const onFocusIn = () => {
+      focusWidth = window.innerWidth
+      // Only capture on the first focus into the box — moving focus from
+      // the input to the button (keyboard already up) mustn't reset it.
+      if (!boxInner?.style.transform) fullHeight = vv ? vv.height : window.innerHeight
+      ScrollTrigger.config({ autoRefreshEvents: 'visibilitychange,DOMContentLoaded,load' })
+      vv?.addEventListener('resize', liftAboveKeyboard)
+      vv?.addEventListener('scroll', liftAboveKeyboard)
+      // Keyboard animates in over ~300ms; re-check after it settles in case
+      // the browser doesn't fire a final visualViewport resize.
+      liftAboveKeyboard()
+      setTimeout(liftAboveKeyboard, 350)
+    }
+    const onFocusOut = () => {
+      // Focus moving within the box (e.g. input -> submit button) isn't a
+      // real exit; wait a tick for activeElement to settle.
+      setTimeout(() => {
+        if (boxEl.contains(document.activeElement)) return
+        vv?.removeEventListener('resize', liftAboveKeyboard)
+        vv?.removeEventListener('scroll', liftAboveKeyboard)
+        cancelAnimationFrame(liftFrame)
+        if (boxInner) boxInner.style.transform = ''
+        ScrollTrigger.config({
+          autoRefreshEvents: 'visibilitychange,DOMContentLoaded,load,resize',
+        })
+        // Catch up on a genuine resize (e.g. rotation) skipped while typing.
+        if (window.innerWidth !== focusWidth) ScrollTrigger.refresh()
+      }, 0)
+    }
+    boxEl.addEventListener('focusin', onFocusIn)
+    boxEl.addEventListener('focusout', onFocusOut)
 
     // Mountains.png / Bg_Sky.png are portrait photos whose lower two-thirds
     // is genuinely dark foreground/treeline. On landscape screens `cover`
@@ -149,30 +219,31 @@ export default function CaveHero() {
         return
       }
 
+      const idle = []
       // Idle drift on the rim puffs — independent of scroll.
       ambientRefs.current.forEach((el, i) => {
         if (!el) return
-        gsap.to(el, {
+        idle.push(gsap.to(el, {
           x: (i % 2 === 0 ? 1 : -1) * AMBIENT_CLOUDS[i].drift,
           y: (i % 2 === 0 ? -1 : 1) * (AMBIENT_CLOUDS[i].drift * 0.5),
           duration: 6 + i,
           ease: 'sine.inOut',
           repeat: -1,
           yoyo: true,
-        })
+        }))
       })
 
       // Slow churn on the fog bank itself so it looks alive before you scroll.
       fogCloudRefs.current.forEach((el, i) => {
         if (!el) return
-        gsap.to(el, {
+        idle.push(gsap.to(el, {
           xPercent: (i % 2 === 0 ? 1 : -1) * 3,
           yPercent: (i % 3 === 0 ? -1 : 1) * 2,
           duration: 9 + (i % 4) * 2,
           ease: 'sine.inOut',
           repeat: -1,
           yoyo: true,
-        })
+        }))
       })
 
       // Cursor parallax on the fog bank — each layer drifts a little with
@@ -208,9 +279,19 @@ export default function CaveHero() {
           end: '+=650%',
           // Smooths out inconsistent wheel/trackpad deltas without making
           // the animation visibly trail behind the scrollbar.
-          scrub: 1.5,
+          scrub: 0.8,
           pin: true,
           anticipatePin: 1,
+          // Once the fog has cleared (and the ambient puffs are the only
+          // idle motion left), stop the looping tweens that were burning
+          // frames on hidden layers; resume if the user scrolls back up.
+          onUpdate: (self) => {
+            const fogGone = self.progress > 0.38
+            idle.forEach((t, i) => {
+              const isFog = i >= AMBIENT_CLOUDS.length
+              if (isFog) t.paused(fogGone)
+            })
+          },
         },
       })
 
@@ -228,7 +309,7 @@ export default function CaveHero() {
           0,
         )
       })
-      tl.to(fogRef.current, { opacity: 0, ease: 'none', duration: 0.3 }, 0.06)
+      tl.to(fogRef.current, { autoAlpha: 0, ease: 'none', duration: 0.3 }, 0.06)
       tl.to(headlineRef.current, { opacity: 1, y: 0, ease: 'none', duration: 0.13 }, 0.13)
 
       // ---- Phase B: pull back and discover the cave ----
@@ -261,6 +342,10 @@ export default function CaveHero() {
 
     return () => {
       if (onPointerMove) window.removeEventListener('pointermove', onPointerMove)
+      boxEl.removeEventListener('focusin', onFocusIn)
+      boxEl.removeEventListener('focusout', onFocusOut)
+      vv?.removeEventListener('resize', liftAboveKeyboard)
+      vv?.removeEventListener('scroll', liftAboveKeyboard)
       ctx.revert()
     }
   }, [])
@@ -268,7 +353,7 @@ export default function CaveHero() {
   return (
     <section className="cave-hero-wrap" ref={wrapRef} id="hero">
       <div className="cave-hero-pin">
-        <img className="cave-layer cave-layer--sky" ref={skyRef} src="/Bg_Sky.webp" alt="" />
+        <img decoding="async" className="cave-layer cave-layer--sky" ref={skyRef} src="/Bg_Sky.webp" alt="" />
         <img
           className="cave-layer cave-layer--mountain"
           ref={mountainRef}
@@ -289,6 +374,7 @@ export default function CaveHero() {
             className="cave-cloud cave-cloud--ambient"
             src={c.src}
             alt=""
+            decoding="async"
             style={{ top: c.top, left: c.left, width: c.width }}
           />
         ))}
@@ -323,6 +409,7 @@ export default function CaveHero() {
               ref={(el) => (fogCloudRefs.current[i] = el)}
               src={c.src}
               alt=""
+              decoding="async"
               style={{ top: c.top, left: c.left, width: c.width }}
             />
           ))}

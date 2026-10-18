@@ -1026,22 +1026,6 @@
   font-size: 16px;
   padding: 12px 0;
 }
-.submit-paste {
-  flex-shrink: 0;
-  height: 32px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.16);
-  background: #fff;
-  color: #18181b;
-  font: 600 13px/1 var(--sans);
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-.submit-paste:active {
-  background: rgba(0, 0, 0, 0.06);
-}
 .submit-shell input::placeholder {
   color: rgba(20, 20, 18, 0.4);
 }

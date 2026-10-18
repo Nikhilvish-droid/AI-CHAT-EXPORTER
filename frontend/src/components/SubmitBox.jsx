@@ -19,19 +19,13 @@ const STAGE_LABELS = [
 ]
 
 // Share sheets often copy a sentence around the link ("Check out this chat:
-// https://g.co/…"), which would fail URL parsing. Keep just the link.
+// https://g.co/…"), which would fail URL parsing. Read just the link out of
+// whatever is in the box — the input itself is left to the browser so native
+// copy/paste behaves normally.
 function extractUrl(text) {
   const match = text.match(/https?:\/\/[^\s<>"']+/i)
   return match ? match[0] : text.trim()
 }
-
-// readText needs a secure context (https or localhost) and isn't in every
-// browser, so the Paste button only shows where it can actually work.
-const canReadClipboard =
-  typeof navigator !== 'undefined' &&
-  typeof window !== 'undefined' &&
-  window.isSecureContext &&
-  typeof navigator.clipboard?.readText === 'function'
 
 function detectPlatform(url) {
   if (!url || !url.trim()) return null
@@ -61,7 +55,8 @@ export default function SubmitBox() {
   const [errorMessage, setErrorMessage] = useState('')
   const [downloadUrl, setDownloadUrl] = useState(null)
 
-  const platform = useMemo(() => detectPlatform(value), [value])
+  const link = useMemo(() => extractUrl(value), [value])
+  const platform = useMemo(() => detectPlatform(link), [link])
 
   const releaseDownload = () => {
     setDownloadUrl((current) => {
@@ -88,7 +83,7 @@ export default function SubmitBox() {
     setStageIndex(0)
 
     try {
-      const result = await convertConversation(value.trim(), setStageIndex)
+      const result = await convertConversation(link, setStageIndex)
       releaseDownload()
       setDownloadUrl(URL.createObjectURL(result.blob))
       setReceipt({
@@ -102,28 +97,6 @@ export default function SubmitBox() {
     } catch (err) {
       setStatus('invalid')
       setErrorMessage(err.message || 'Something went wrong. Please try again.')
-    }
-  }
-
-  const applyPasted = (text) => {
-    setValue(extractUrl(text))
-    if (status === 'invalid') setStatus('idle')
-  }
-
-  const handlePaste = (e) => {
-    const text = e.clipboardData?.getData('text')
-    if (!text) return
-    e.preventDefault()
-    applyPasted(text)
-  }
-
-  const pasteFromClipboard = async () => {
-    try {
-      const text = await navigator.clipboard.readText()
-      if (text) applyPasted(text)
-    } catch {
-      setStatus('invalid')
-      setErrorMessage('Clipboard access was blocked — long-press the box and choose Paste.')
     }
   }
 
@@ -180,13 +153,7 @@ export default function SubmitBox() {
                 setValue(e.target.value)
                 if (status === 'invalid') setStatus('idle')
               }}
-              onPaste={handlePaste}
             />
-            {canReadClipboard && !value && !isLoading && (
-              <button type="button" className="submit-paste" onClick={pasteFromClipboard}>
-                Paste
-              </button>
-            )}
             <button type="submit" className="submit-go" disabled={isLoading} aria-label="Generate memory PDF">
               {isLoading ? <span className="submit-spinner" aria-hidden="true" /> : '→'}
             </button>

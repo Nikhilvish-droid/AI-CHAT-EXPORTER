@@ -95,58 +95,70 @@ export default function CaveHero() {
     // reveal it), centered in whatever space the keyboard leaves visible.
     const boxEl = submitBoxRef.current
     const boxInner = boxEl.querySelector('.submit-box')
+    //
+    // The box only moves once the keyboard has finished opening (or
+    // closing), and only on a real size change. It deliberately ignores
+    // visualViewport `scroll`: the browser pans the viewport when it shows
+    // the long-press Copy/Paste menu or while selection handles are dragged,
+    // and moving the box in response dismissed that menu, so native
+    // copy/paste never worked.
     let focusWidth = 0
     let fullHeight = window.innerHeight
-    let liftFrame = 0
+    let liftTimer = 0
+    let currentShift = 0
     const vv = window.visualViewport
-    const liftAboveKeyboard = () => {
-      cancelAnimationFrame(liftFrame)
-      liftFrame = requestAnimationFrame(() => {
-        if (!vv || !boxInner) return
-        // Measure the wrapper, not the box itself: the box carries the lift
-        // transform (mid-transition, too), the wrapper never does, so this
-        // is always the box's untransformed position.
-        const rect = boxEl.getBoundingClientRect()
-        const visibleTop = vv.offsetTop
-        const visibleHeight = vv.height
-        // Keyboard not open (no meaningful shrink since focus) -> leave the
-        // box alone. Compared to the pre-keyboard height, not innerHeight,
-        // since some Android browsers shrink innerHeight along with it.
-        if (visibleHeight > fullHeight * 0.85) {
-          boxInner.style.transform = ''
-          return
-        }
-        const gap = 12
-        let targetTop = visibleTop + (visibleHeight - rect.height) / 2
-        // Taller than the visible space: pin its top edge just under the
-        // top instead, so the input row (near the top) stays on screen.
-        if (rect.height + gap * 2 > visibleHeight) targetTop = visibleTop + gap
-        const shift = Math.round(targetTop - rect.top)
-        boxInner.style.transform = shift ? `translateY(${shift}px)` : ''
-      })
+    const setShift = (shift) => {
+      currentShift = shift
+      if (boxInner) boxInner.style.transform = shift ? `translateY(${shift}px)` : ''
+    }
+    const applyLift = () => {
+      if (!vv || !boxInner) return
+      // Measure the wrapper, not the box itself: the box carries the lift
+      // transform, the wrapper never does, so this is always the box's
+      // untransformed position.
+      const rect = boxEl.getBoundingClientRect()
+      const visibleTop = vv.offsetTop
+      const visibleHeight = vv.height
+      // Keyboard not open (no meaningful shrink since focus) -> leave the
+      // box alone. Compared to the pre-keyboard height, not innerHeight,
+      // since some Android browsers shrink innerHeight along with it.
+      if (visibleHeight > fullHeight * 0.85) {
+        setShift(0)
+        return
+      }
+      const gap = 12
+      let targetTop = visibleTop + (visibleHeight - rect.height) / 2
+      // Taller than the visible space: pin its top edge just under the
+      // top instead, so the input row (near the top) stays on screen.
+      if (rect.height + gap * 2 > visibleHeight) targetTop = visibleTop + gap
+      const shift = Math.round(targetTop - rect.top)
+      // Ignore tiny corrections — every move risks closing an open menu.
+      if (Math.abs(shift - currentShift) >= 8) setShift(shift)
+    }
+    // Keyboards fire a burst of resizes while animating in; wait for the
+    // last one so the box moves a single time.
+    const scheduleLift = () => {
+      clearTimeout(liftTimer)
+      liftTimer = setTimeout(applyLift, 250)
     }
     const onFocusIn = () => {
       focusWidth = window.innerWidth
       // Only capture on the first focus into the box — moving focus from
       // the input to the button (keyboard already up) mustn't reset it.
-      if (!boxInner?.style.transform) fullHeight = vv ? vv.height : window.innerHeight
+      if (!currentShift) fullHeight = vv ? vv.height : window.innerHeight
       ScrollTrigger.config({ autoRefreshEvents: 'visibilitychange,DOMContentLoaded,load' })
-      vv?.addEventListener('resize', liftAboveKeyboard)
-      vv?.addEventListener('scroll', liftAboveKeyboard)
-      // Keyboard animates in over ~300ms; re-check after it settles in case
-      // the browser doesn't fire a final visualViewport resize.
-      liftAboveKeyboard()
-      setTimeout(liftAboveKeyboard, 350)
+      vv?.addEventListener('resize', scheduleLift)
+      // Fallback for browsers that don't fire a final resize event.
+      scheduleLift()
     }
     const onFocusOut = () => {
       // Focus moving within the box (e.g. input -> submit button) isn't a
       // real exit; wait a tick for activeElement to settle.
       setTimeout(() => {
         if (boxEl.contains(document.activeElement)) return
-        vv?.removeEventListener('resize', liftAboveKeyboard)
-        vv?.removeEventListener('scroll', liftAboveKeyboard)
-        cancelAnimationFrame(liftFrame)
-        if (boxInner) boxInner.style.transform = ''
+        vv?.removeEventListener('resize', scheduleLift)
+        clearTimeout(liftTimer)
+        setShift(0)
         ScrollTrigger.config({
           autoRefreshEvents: 'visibilitychange,DOMContentLoaded,load,resize',
         })
@@ -344,8 +356,8 @@ export default function CaveHero() {
       if (onPointerMove) window.removeEventListener('pointermove', onPointerMove)
       boxEl.removeEventListener('focusin', onFocusIn)
       boxEl.removeEventListener('focusout', onFocusOut)
-      vv?.removeEventListener('resize', liftAboveKeyboard)
-      vv?.removeEventListener('scroll', liftAboveKeyboard)
+      vv?.removeEventListener('resize', scheduleLift)
+      clearTimeout(liftTimer)
       ctx.revert()
     }
   }, [])

@@ -3,7 +3,6 @@ from pathlib import Path
 import ast
 import json
 from datetime import datetime, timezone
-import re
 from curl_cffi import requests as cffi_requests
 
 from app.services import assets as assetlib
@@ -17,8 +16,6 @@ KEEP_CONTENT_TYPES = {"text", "multimodal_text"}
 
 ENQUEUE_MARKER = "streamController.enqueue("
 
-# Cloudflare stalls older browser fingerprints, so try newer ones first and
-# fall back instead of failing the whole request on one stale profile.
 IMPERSONATE_PROFILES = ("chrome131", "firefox", "chrome124")
 
 ASSET_PART_TYPES = {
@@ -72,8 +69,6 @@ def script_parser(html_data):
     try:
         soup = BeautifulSoup(html_data, 'html.parser')
 
-        # The share page streams its data as several enqueue() calls, and they
-        # are not always in the same script tag, so keep every one of them.
         scripts = [
             text
             for text in (script.get_text() for script in soup.find_all("script"))
@@ -89,12 +84,6 @@ def script_parser(html_data):
 
 
 def read_js_string(script, index):
-    """Read one quoted JS string starting at or after ``index``.
-
-    Returns (decoded_text, position_after_the_string). Escapes are skipped two
-    characters at a time so an escaped backslash right before the closing quote
-    (``"...\\\\"``) does not end the string early.
-    """
 
     while index < len(script) and script[index].isspace():
         index += 1
@@ -122,7 +111,6 @@ def read_js_string(script, index):
 
 
 def enqueue_chunks(scripts):
-    """Collect the argument of every streamController.enqueue() call, in order."""
 
     chunks = []
 
@@ -147,10 +135,6 @@ def enqueue_chunks(scripts):
 
 
 def parse_chunk(chunk):
-    """Parse one enqueue chunk into the JSON list it carries, if it carries one.
-
-    Chunks can be prefixed with a stream id such as ``P627:`` before the JSON.
-    """
 
     start = chunk.find("[")
 
@@ -165,7 +149,6 @@ def parse_chunk(chunk):
     return data if isinstance(data, list) and data else None
 
 
-# extracting payload from script
 def extract_payload(scripts):
     if isinstance(scripts, str):
         scripts = [scripts]
@@ -180,8 +163,6 @@ def extract_payload(scripts):
 
     candidates = [data for data in (parse_chunk(chunk) for chunk in chunks) if data]
 
-    # Long conversations can be split across several enqueue calls, so fall back
-    # to reading them as one concatenated payload.
     if not candidates:
         joined = parse_chunk("".join(chunks))
 
@@ -192,7 +173,6 @@ def extract_payload(scripts):
         return _fail("extract_payload: payload JSON parse failed")
 
     return _ok(candidates)
-
 
 
 def unescape_js_string(payload: str, quote: str) -> str:
@@ -228,12 +208,10 @@ def decode(data):
                 result = {}
                 cache[index] = result
                 for key, ref in value.items():
-                    # _122 means: use data[122] as the key
                     if isinstance(key, str) and key.startswith("_"):
                         actual_key = resolve(int(key[1:]))
                     else:
                         actual_key = key
-                    # positive integer means: reference to another index
                     if isinstance(ref, int) and ref >= 0:
                         actual_value = resolve(ref)
                     else:
@@ -259,7 +237,6 @@ def decode(data):
         decoded = resolve(0)
         if not isinstance(decoded, dict):
             return _fail("decode: decoded root is not a dict")
-
 
 
         return _ok(decoded)
@@ -293,7 +270,6 @@ def get_conversation_data(decoded):
         return _ok((conversation_id, title, mapping))
     except Exception as e:
         return _fail(f"get_conversation_data: failed: {e}")
-
 
 
 def normalize_file_id(value):
@@ -643,8 +619,6 @@ def load_chatgpt_chat(url):
     if not payload_res.get("ok"):
         return {"ok": False, "message": payload_res.get("message", "extract_payload failed")}
 
-    # Only one of the enqueue chunks carries the conversation; the others are
-    # routing or streaming noise, so take the first that decodes into one.
     conv_res = None
 
     for payload_data in payload_res["value"]:

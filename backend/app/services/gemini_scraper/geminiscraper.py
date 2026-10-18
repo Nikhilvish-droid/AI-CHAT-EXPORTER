@@ -193,7 +193,6 @@ def _extract_user_text(user_elem) -> str:
 
 
 def _code_language(node) -> str:
-    """Best-effort language label for a Gemini code block."""
 
     candidates = []
 
@@ -229,17 +228,9 @@ def _code_language(node) -> str:
 
 
 def _replace_code_blocks(container):
-    """Turn rendered code blocks back into fenced markdown.
-
-    Gemini renders code as a tree of highlighted spans. Reading it with
-    get_text(separator="\\n") would put every token on its own line and lose the
-    language, so the downstream code-block extractor would never see it. Fencing
-    the block here keeps it intact and verbatim in the exported PDF.
-    """
 
     for selector in CODE_BLOCK_SELECTORS:
         for node in container.find_all(selector):
-            # A <pre> nested inside an already handled <code-block> is gone by now.
             if node.parent is None:
                 continue
 
@@ -522,7 +513,6 @@ def load_gemini_chat(url):
     }
 
     return {"ok": True, "data": result}
-
 
 
 if __name__ == "__main__":

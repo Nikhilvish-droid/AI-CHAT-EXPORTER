@@ -20,23 +20,6 @@ VECTOR_IMAGE_MIMES = {
 
 EMBEDDABLE_MIMES = RASTER_IMAGE_MIMES | VECTOR_IMAGE_MIMES
 
-REFERENCE_ONLY_MIMES = {
-    "application/pdf",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/vnd.ms-excel",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "application/vnd.ms-powerpoint",
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    "application/zip",
-    "application/x-zip-compressed",
-    "text/csv",
-    "audio/mpeg",
-    "audio/wav",
-    "video/mp4",
-    "video/webm",
-}
-
 MIME_EXTENSIONS = {
     "image/png": ".png",
     "image/jpeg": ".jpg",
@@ -85,10 +68,6 @@ def mime_from_name(name, fallback=None):
 
 def is_embeddable(mime_type):
     return normalize_mime(mime_type) in EMBEDDABLE_MIMES
-
-
-def is_vector(mime_type):
-    return normalize_mime(mime_type) in VECTOR_IMAGE_MIMES
 
 
 def classify(mime_type, size_bytes=None):

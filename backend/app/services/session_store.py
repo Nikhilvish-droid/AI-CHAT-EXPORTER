@@ -1,17 +1,3 @@
-"""Holds pipeline state between the /api/* requests for one conversation.
-
-The pipeline is split into a few small requests (scrape -> analyze -> write ->
-export) so the frontend can show progress per stage instead of one long call.
-HTTP requests don't share memory, so this dict is what carries each
-conversation's data from one request to the next. It's process-local - fine
-for a single dev/demo server; swap for Redis or a DB if this ever runs
-multiple workers.
-
-Entries older than TTL_SECONDS are dropped the next time save() runs, so a
-conversion someone abandoned mid-flow (closed the tab after /scrape) doesn't
-sit in memory forever.
-"""
-
 import time
 
 TTL_SECONDS = 30 * 60

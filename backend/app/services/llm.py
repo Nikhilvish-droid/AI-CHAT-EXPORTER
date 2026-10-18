@@ -12,7 +12,6 @@ load_dotenv()
 
 SECTION_KEYS = ("overview", "key_decisions", "problems_solutions", "technical_details")
 
-# Headings the model uses when it ignores the JSON instruction and writes prose.
 SECTION_HEADINGS = {
     "overview": ("overview", "section 1 overview", "1 overview"),
     "key_decisions": ("key decisions", "key_decisions", "section 2 key decisions", "2 key decisions"),
@@ -36,38 +35,19 @@ BASE_URL = "https://api.groq.com/openai/v1"
 TIMEOUT_SECONDS = 120
 MAX_ATTEMPTS = 3
 
-# ---------------------------------------------------------------------------
-# Capacity knobs. Change these when the API key, tier or model changes.
-#
-# The request the provider bills is (prompt + reserved answer), and on Groq's
-# free tier that total must stay under the tokens-per-minute limit, so the
-# prompt is trimmed to fit before it is sent. On a bigger key raise
-# CONTEXT_TOKEN_LIMIT (and MAX_OUTPUT_TOKENS for a longer document); nothing
-# else needs to change.
-#
-# The companion knob is FINAL_TOP_K in app/services/retrieval.py, which sets
-# how many chunks are retrieved per section.
-# ---------------------------------------------------------------------------
-CONTEXT_TOKEN_LIMIT = 8000   # tokens per request allowed by the key/model
-MAX_OUTPUT_TOKENS = 2500     # reserved for the generated document
-SAFETY_MARGIN_TOKENS = 300   # cushion for token-estimate error
-MAX_RETRY_WAIT = 30          # seconds; caps the wait after a rate limit
+CONTEXT_TOKEN_LIMIT = 8000
+MAX_OUTPUT_TOKENS = 2500
+SAFETY_MARGIN_TOKENS = 300
+MAX_RETRY_WAIT = 30
 
-# The model is told this word budget so it spreads the document across all four
-# sections instead of being cut off part way through. A reasoning model also
-# spends output tokens on thinking, so keep this well under MAX_OUTPUT_TOKENS.
 OUTPUT_WORD_BUDGET = int(MAX_OUTPUT_TOKENS * 0.55)
 
-# Chars per token. Measured ~4.5 on this prompt; 3.5 keeps the estimate
-# pessimistic so code-heavy chats cannot silently overshoot the limit.
 CHARS_PER_TOKEN = 3.5
 
 PROMPT_TOKEN_BUDGET = CONTEXT_TOKEN_LIMIT - MAX_OUTPUT_TOKENS - SAFETY_MARGIN_TOKENS
 
 
-
 def strip_fences(raw):
-    """Drop a ```json ... ``` wrapper when the model adds one."""
 
     if not raw.startswith("```"):
         return raw
@@ -79,7 +59,6 @@ def strip_fences(raw):
 
 
 def json_object_slice(raw):
-    """Return the outermost {...} span, ignoring braces that sit inside strings."""
 
     start = raw.find("{")
 
@@ -116,11 +95,6 @@ def json_object_slice(raw):
 
 
 def escape_control_chars(raw):
-    """Escape raw newlines and tabs the model left unescaped inside JSON strings.
-
-    json.loads rejects those with "Invalid control character at: line X column Y",
-    which is the usual way an otherwise well-formed answer fails to parse.
-    """
 
     out = []
     in_string = False
@@ -177,7 +151,6 @@ def loads_relaxed(candidate):
 
 
 def salvage_sections(raw):
-    """Last resort: pull each section value out of JSON we still cannot parse."""
 
     result = {}
     keys = "|".join(SECTION_KEYS)
@@ -199,7 +172,6 @@ def salvage_sections(raw):
 
 
 def heading_key(line):
-    """Map a markdown/plain heading line to a section key, or None."""
 
     if len(line) > 80:
         return None
@@ -218,11 +190,6 @@ def heading_key(line):
 
 
 def salvage_prose(raw):
-    """Fall back to splitting a plain-prose answer on its section headings.
-
-    The model occasionally ignores the JSON instruction and just writes the
-    document. Rather than failing the whole export, recover the four sections.
-    """
 
     sections = {}
     current = None
@@ -247,7 +214,6 @@ def salvage_prose(raw):
 
 
 def parse_sections(raw):
-    """Turn the model answer into the four-section dict, tolerating sloppy JSON."""
 
     raw = strip_fences((raw or "").strip())
 
@@ -285,12 +251,6 @@ def missing_sections(result):
 
 
 def compact_retrieved(retrieved_data):
-    """Keep only what the model needs from the retrieval output.
-
-    retrieve_data returns every chunk wrapped in bookkeeping the model never
-    reads - chunk_id, metadata and three float scores - which inflates the
-    request far past the API's per-minute token limit. Send the chunk text only.
-    """
 
     if not isinstance(retrieved_data, dict):
         return retrieved_data
@@ -315,8 +275,6 @@ def compact_retrieved(retrieved_data):
         if texts:
             compact[section] = texts
 
-    # Deliberately no fallback to retrieved_data: returning the raw items would
-    # smuggle the metadata and scores back into the prompt and skip the budget.
     return compact
 
 
@@ -328,7 +286,6 @@ def estimate_tokens(text):
 
 
 def truncate_to_tokens(text, max_tokens):
-    """Cut text down to roughly max_tokens, preferring a sentence boundary."""
 
     if max_tokens <= 0:
         return ""
@@ -340,8 +297,6 @@ def truncate_to_tokens(text, max_tokens):
 
     clipped = text[:limit]
 
-    # Prefer to end on a sentence, then on a word, so the model is not handed
-    # a half-written token sequence.
     for boundary in (clipped.rfind(". "), clipped.rfind("\n"), clipped.rfind(" ")):
         if boundary > limit * 0.6:
             clipped = clipped[:boundary]
@@ -351,14 +306,6 @@ def truncate_to_tokens(text, max_tokens):
 
 
 def fit_sections(sections, budget):
-    """Trim retrieved chunks so the whole payload fits `budget` tokens.
-
-    Chunks arrive best-first from retrieval, so they are taken in rank order and
-    the budget is shared between sections round-robin: every section keeps its
-    best chunk before any section gets a second one. A conversation long enough
-    to exhaust its own context window will always overflow the budget, so this
-    decides what to drop instead of letting the provider reject the request.
-    """
 
     if not isinstance(sections, dict) or not sections:
         return {}
@@ -367,8 +314,6 @@ def fit_sections(sections, budget):
         return {}
 
     kept = {key: [] for key in sections}
-    # Room guaranteed to each section, so a long section 1 cannot starve
-    # section 4 of its best chunk.
     share = max(1, budget // len(sections))
     deepest = max((len(texts) for texts in sections.values()), default=0)
     used = 0
@@ -387,7 +332,6 @@ def fit_sections(sections, budget):
                 used += cost
                 continue
 
-            # Never leave a section empty: clip its best chunk to fit.
             if not kept[key]:
                 clipped = truncate_to_tokens(text, min(share, room))
 
@@ -399,15 +343,12 @@ def fit_sections(sections, budget):
 
 
 def build_payload(retrieved_data):
-    """Shape the retrieval output into the JSON the prompt carries."""
 
     sections = compact_retrieved(retrieved_data)
 
     if not isinstance(sections, dict) or not sections:
         raise ValueError("Retrieved data contained no usable chunk text")
 
-    # Measure the instructions with an empty payload, so the chunk budget is
-    # whatever is left over after the fixed part of the prompt.
     overhead = estimate_tokens(build_prompt("{}"))
     fitted = fit_sections(sections, PROMPT_TOKEN_BUDGET - overhead)
 
@@ -427,7 +368,6 @@ def is_rate_limit(error):
 
 
 def oversized_request(error):
-    """True when one request is itself bigger than the limit allows."""
 
     text = str(error).lower()
 
@@ -435,7 +375,6 @@ def oversized_request(error):
 
 
 def retry_delay(error, attempt):
-    """Seconds to wait before retrying, honouring a Retry-After when given."""
 
     wait = 2 ** attempt
 
@@ -454,7 +393,6 @@ def retry_delay(error, attempt):
 
 
 def describe_failure(error, budget):
-    """Explain a give-up in terms the caller can act on."""
 
     if oversized_request(error):
         return (
@@ -683,8 +621,6 @@ def build_prompt(payload):
 
 def openai_llm(retrieved_data):
 
-    # with open(retrieved_file, 'r', encoding="utf-8") as file:
-    #     retrieved_data = json.load(file)
 
     payload, budget = build_payload(retrieved_data)
     prompt = build_prompt(payload)
@@ -699,8 +635,6 @@ def openai_llm(retrieved_data):
     result = None
     last_error = None
 
-    # The answer is retried on an unusable reply too, not just on a failed
-    # request: the model occasionally returns text that is not valid JSON.
     for attempt in range(MAX_ATTEMPTS):
         try:
             response = client.responses.create(
@@ -710,8 +644,6 @@ def openai_llm(retrieved_data):
             )
             result = parse_sections(response.output_text or "")
 
-            # A reply cut off by the output cap parses but loses whole sections.
-            # Retry once rather than exporting a half document.
             if missing_sections(result) and attempt < MAX_ATTEMPTS - 1:
                 last_error = ValueError(
                     "answer was cut off before %s"
@@ -725,7 +657,6 @@ def openai_llm(retrieved_data):
             last_error = e
 
             if oversized_request(e):
-                # Retrying cannot help: the request alone exceeds the limit.
                 break
 
             if attempt < MAX_ATTEMPTS - 1:
@@ -737,8 +668,6 @@ def openai_llm(retrieved_data):
     gaps = missing_sections(result)
 
     if gaps:
-        # Still better than no document, but say so instead of shipping a
-        # silently empty section.
         print(
             "openai_llm: sections left empty after %d attempts: %s "
             "(raise MAX_OUTPUT_TOKENS or lower FINAL_TOP_K)"
@@ -749,5 +678,3 @@ def openai_llm(retrieved_data):
         result[key] = normalize_newlines(str(result.get(key) or ""))
 
     return result
-
-# openai_llm()

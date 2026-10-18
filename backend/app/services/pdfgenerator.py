@@ -20,37 +20,31 @@ from reportlab.platypus import (
     Image,
     XPreformatted,
     KeepTogether,
-    PageBreak,
 )
 from reportlab.platypus.flowables import HRFlowable
 
 from app.services import assets as assetlib
-from app.services.codeblocks import normalize_newlines
+from app.services.codeblocks import (
+    normalize_newlines,
+    BOX_DRAWING,
+    ASCII_ART_PATTERN,
+    TABLE_ROW_PATTERN,
+)
 
 BASE_DIR = Path(__file__).parent.parent
 OUTPUT_FILE = BASE_DIR / "output" / "memory_export.pdf"
 
 PAGE_WIDTH = A4[0]
 MARGIN = 20 * mm
-# SimpleDocTemplate pads its frame by 6pt on each side, so the drawable width
-# is narrower than the margin box. Ignoring that padding makes every full-width
-# table 12pt too wide for its frame.
 FRAME_PADDING = 6
 
 CONTENT_WIDTH = PAGE_WIDTH - (2 * MARGIN) - (2 * FRAME_PADDING)
 
-# A table row cannot be split across pages unless the row itself is splittable,
-# so text placed in a cell is capped. A long asset title (an image-generation
-# prompt, say) would otherwise build one row taller than the whole page.
 MAX_CELL_CHARS = 300
 
 MAX_IMAGE_WIDTH = 150 * mm
 MAX_IMAGE_HEIGHT = 185 * mm
 
-# Assigned locally when a manifest entry has a saved path but the file could
-# not actually be turned into a PDF image (missing on disk, corrupted,
-# unsupported despite its declared mime type). Distinct from assetlib's own
-# skip reasons, which are all decided before the file is ever opened.
 SKIP_UNREADABLE = "pdf_unreadable"
 
 INK = colors.HexColor("#1F1F1D")
@@ -61,13 +55,7 @@ CODE_BG = colors.HexColor("#F6F6F3")
 CODE_BORDER = colors.HexColor("#E2E1D9")
 TABLE_HEAD = colors.HexColor("#F1EFE8")
 
-BOX_DRAWING = set("┌┐└┘│─├┤┬┴┼╔╗╚╝║═╠╣╦╩╬▲▼◄►↓↑←→")
-
 ASCII_ART_CHARS = set("+-=|_/\\<>v^ ")
-
-ASCII_ART_PATTERN = re.compile(r"[+|]-{2,}|-{2,}[+|]|\+={2,}|={2,}\+")
-
-TABLE_ROW_PATTERN = re.compile(r"^\|.*\|$")
 
 CODE_FONT_SIZE = 8.5
 CODE_CHAR_WIDTH = 0.6
@@ -128,11 +116,6 @@ def clean_text(text):
     for old, new in replacements.items():
         text = text.replace(old, new)
 
-    # Helvetica/Courier (WinAnsi encoding) only render a handful of dash
-    # characters. LLM output regularly uses others - HYPHEN (U+2010) in
-    # particular - that reportlab has no glyph for and draws as a tofu box.
-    # Normalizing every Unicode dash-punctuation codepoint to ASCII "-"
-    # avoids that instead of chasing individual characters one at a time.
     return "".join(
         "-" if unicodedata.category(ch) == "Pd" else ch
         for ch in text
@@ -328,10 +311,6 @@ CODE_HINT_PATTERN = re.compile(
 
 
 def looks_like_code(lines, language=""):
-    """Tell a real fenced code/diagram block apart from prose the model
-    wrapped in ``` by mistake, so the latter still gets markdown rendering
-    (bullets, bold) instead of being dumped as raw monospaced text.
-    """
 
     if language and language.lower().strip("`") in CODE_LANGUAGE_HINTS:
         return True
@@ -370,8 +349,6 @@ def split_blocks(content):
             if looks_like_code(body, language):
                 blocks.append(("code", {"language": language, "lines": body}))
             else:
-                # A stray/misplaced fence around ordinary prose - parse its
-                # contents as normal markdown instead of a raw code block.
                 blocks.extend(split_blocks("\n".join(body)))
 
             continue
@@ -557,8 +534,6 @@ def render_table(block, styles):
     data = [[Paragraph(inline_markup(cell), styles["body"]) for cell in row] for row in rows]
     col_width = CONTENT_WIDTH / width
 
-    # splitInRow lets a tall row break across pages instead of raising
-    # LayoutError; conversation tables are not truncated to make them fit.
     table = Table(data, colWidths=[col_width] * width, repeatRows=1, splitInRow=1)
 
     table.setStyle(
@@ -734,16 +709,6 @@ def image_flowable(entry, base_dir, max_width=None, max_height=None):
 
 
 def resolve_images(embedded, base_dir, styles, columns=2):
-    """Try to embed every asset the manifest marked as downloaded.
-
-    A manifest entry having a path only means the scraper wrote *some* file -
-    it does not guarantee the file is still there, or that it is a valid,
-    decodable image by the time the PDF is built. Anything that fails here is
-    reported back so the caller can list it as not included, instead of an
-    image silently disappearing from the document with no trace at all.
-
-    Returns (cells, failed, cell_width) where cells is ready for image_grid().
-    """
 
     gutter = 6 * mm
     cell_width = (CONTENT_WIDTH - gutter * (columns - 1)) / columns
@@ -901,7 +866,6 @@ def details_table(title, source_url, platform, generated_at):
 
 
 def clip_cell(text, limit=MAX_CELL_CHARS):
-    """Keep a table cell short enough that its row still fits on a page."""
 
     text = str(text or "")
 
@@ -985,8 +949,6 @@ def generate_pdf(
 
     assets = assets or {"embedded": [], "missing": []}
     embedded = assets.get("embedded") or []
-    # Copied so a failed embed (see resolve_images below) can be folded in
-    # without mutating the caller's manifest.
     missing = list(assets.get("missing") or [])
     reupload = assetlib.reupload_candidates(missing)
 
@@ -1008,10 +970,6 @@ def generate_pdf(
 
     styles = build_styles()
 
-    # Resolved before the "Files not included" table is built, so a manifest
-    # entry that has a path but turned out to be unreadable at render time
-    # (missing/corrupted file, decode failure) is reported there instead of
-    # silently vanishing from the document.
     image_cells, failed_embeds, image_cell_width = resolve_images(embedded, BASE_DIR, styles)
 
     for entry in failed_embeds:

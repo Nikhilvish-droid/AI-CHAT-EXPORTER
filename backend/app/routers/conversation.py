@@ -95,8 +95,6 @@ def require_session(conversation_id):
     return session
 
 
-# Stage 1 of 4 ("Reading the conversation…"): fetch the chat and get it ready
-# to be summarised - scrape, pull attachments/code blocks, and chunk the text.
 @router.post("/scrape")
 def scrape(body: ScrapeRequest):
     url = body.url.strip() if body.url else ""
@@ -158,8 +156,6 @@ def scrape(body: ScrapeRequest):
     }
 
 
-# Stage 2 of 4 ("Finding what matters…"): embed the chunks, store them in the
-# vector database, then pull back the most relevant ones per section.
 @router.post("/analyze")
 def analyze(body: ConversationRequest):
     session = require_session(body.conversation_id)
@@ -192,8 +188,6 @@ def analyze(body: ConversationRequest):
     return {"conversation_id": body.conversation_id, "ok": True}
 
 
-# Stage 3 of 4 ("Writing the sections…"): ask the LLM to turn the retrieved
-# chunks into the four-section memory document.
 @router.post("/write")
 def write(body: ConversationRequest):
     session = require_session(body.conversation_id)
@@ -214,16 +208,12 @@ def write(body: ConversationRequest):
     return {"conversation_id": body.conversation_id, "ok": True}
 
 
-# Stage 4 of 4 ("Binding the PDF…"): render the document and hand back the file.
 @router.post("/export")
 def export(body: ConversationRequest):
     session = require_session(body.conversation_id)
     conversation_id = body.conversation_id
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    # Unique per request, not just per conversation_id: two people exporting the
-    # same shared link at the same time must not write over each other's file
-    # while one of them is still being streamed back.
     output_file = output_dir / f"{safe_segment(conversation_id, 'memory_export')}-{uuid4().hex[:8]}.pdf"
 
     stage(
@@ -251,8 +241,6 @@ def export(body: ConversationRequest):
         path=output_file,
         media_type="application/pdf",
         filename=f"{safe_segment(session.get('title'), 'memory_export')}.pdf",
-        # Each export writes its own file (see the uuid suffix above), so it's
-        # safe to delete it once this response has finished streaming.
         background=BackgroundTask(output_file.unlink),
         headers={
             "Access-Control-Expose-Headers": (

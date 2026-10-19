@@ -360,7 +360,7 @@ export default function CaveHero() {
       clearTimeout(liftTimer)
       ctx.revert()
     }
-  }, [])
+  }, [fogClouds])
 
   return (
     <section className="cave-hero-wrap" ref={wrapRef} id="hero">

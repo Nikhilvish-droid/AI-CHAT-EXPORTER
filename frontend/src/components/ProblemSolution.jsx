@@ -16,6 +16,8 @@ const BACK_FLOW = [
   'NEW AI AGENT',
 ]
 
+const SHORT_VIEWPORT_QUERY = '(max-height: 540px)'
+
 const FRONT_STATS = [
   { value: '128K', label: 'token context window on a modern chat model (2026)' },
   { value: '0%', label: 'of that carries into the next tab you open' },
@@ -159,6 +161,18 @@ export default function ProblemSolution() {
   const sceneRef = useRef(null)
   const prefersReducedMotion = useReducedMotion()
   const [tiltEnabled, setTiltEnabled] = useState(false)
+  // A phone in landscape is too short to fit either face of a pinned card,
+  // so it gets the same plain stacked cards as reduced motion.
+  const [isShortViewport, setIsShortViewport] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(SHORT_VIEWPORT_QUERY).matches,
+  )
+
+  useEffect(() => {
+    const mq = window.matchMedia(SHORT_VIEWPORT_QUERY)
+    const update = () => setIsShortViewport(mq.matches)
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
 
   useEffect(() => {
     const mq = window.matchMedia('(hover: hover) and (pointer: fine)')
@@ -213,7 +227,7 @@ export default function ProblemSolution() {
     tiltZRaw.set(0)
   }
 
-  if (prefersReducedMotion) {
+  if (prefersReducedMotion || isShortViewport) {
     return (
       <section className="ps-section ps-section--static" id="problem-solution">
         <StaticFallback />

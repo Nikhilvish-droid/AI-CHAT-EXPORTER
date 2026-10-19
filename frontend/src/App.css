@@ -10,6 +10,19 @@
   align-items: center;
   justify-content: space-between;
   padding: 20px 48px;
+  transition: background-color 0.25s ease, padding 0.25s ease;
+}
+/* Past the hero every section is dark and scrolls under the fixed nav, so
+   the bar gets its own backing there instead of text sitting on text. */
+.site-nav.is-solid {
+  background-color: rgba(8, 6, 14, 0.78);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+.site-nav.is-solid .site-nav-bar {
+  display: none;
 }
 
 .site-nav-bar {
@@ -768,7 +781,13 @@
 }
 .ps-static-card .ps-visual {
   flex: 0.8;
-  height: 200px;
+  height: auto;
+}
+.ps-static-card .ps-pdf {
+  width: min(100%, 320px);
+  height: auto;
+  aspect-ratio: 700 / 772;
+  margin: 0 auto;
 }
 @media (max-width: 1100px) {
   /* This section's row layout needs more shoulder room than the site's usual
@@ -777,19 +796,36 @@
      fixed-aspect-ratio, overflow:hidden face (the back face's 4-step vertical
      flow is the tallest content and the tightest fit). Switching to the
      stacked layout earlier here (but nowhere else) avoids that. */
+  .ps-sticky {
+    /* svh, not vh: on phones 100vh includes the area under the browser's
+       URL bar, which pushed the card's centre below the visible screen. */
+    height: 100svh;
+    padding: 64px 0 20px;
+    box-sizing: border-box;
+  }
   .ps-scene {
-    /* Wider and a little taller than the desktop-derived 62vw box — with
-       real stat pills and a 4-step flow now living on the back face, the
-       old narrow card didn't have enough room and clipped content at the
-       top under `.ps-face`'s `overflow: hidden`. */
-    width: min(90vw, 460px);
-    aspect-ratio: 3 / 4.5;
+    /* Height comes from the viewport, not a fixed aspect ratio. A 3/4.5
+       box was shorter than the stacked copy + screenshots on most phones,
+       and since the column stacks bottom-up the overflow was clipped off
+       the top under `.ps-face`'s `overflow: hidden`. Now the copy keeps
+       its natural height and the visual shrinks into whatever is left. */
+    width: min(92vw, 460px);
+    aspect-ratio: auto;
+    height: calc(100vh - 96px);
+    height: min(calc(100svh - 96px), 640px);
+  }
+  .ps-face {
+    padding: 18px 16px;
   }
   .ps-face-inner,
   .ps-face-inner--reverse {
     flex-direction: column-reverse;
+    justify-content: center;
     text-align: center;
-    gap: 12px;
+    gap: 14px;
+  }
+  .ps-face-copy {
+    flex: none;
   }
   .ps-face-copy p {
     max-width: none;
@@ -823,24 +859,52 @@
   }
   .ps-flow--col .ps-flow-step {
     flex-direction: row;
+    align-items: center;
   }
   .ps-flow--col .ps-flow-arrow {
     transform: rotate(-90deg);
   }
-  .ps-visual {
-    height: 34%;
-    flex: none;
+  /* The visual takes the leftover height and is a size container, so the
+     images below can size themselves from that height and never overflow. */
+  .ps-face .ps-visual {
+    flex: 1 1 0;
+    min-height: 0;
+    height: auto;
     width: 100%;
+    container-type: size;
   }
   .ps-shot-stack {
+    gap: 8px;
     width: min(66vw, 270px);
+    /* stack height ≈ 0.643 × width (both screenshots) + ~66px (arrow,
+       caption, gaps), so this width is the most that fits the visual. */
+    width: min(100%, 320px, calc((100cqh - 66px) * 1.5));
+  }
+  .ps-shot-caption {
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .ps-face .ps-pdf {
+    width: min(100%, 340px, calc(100cqh * 0.9));
+    height: auto;
+    aspect-ratio: 700 / 772;
   }
   .ps-flipcard-edge--2 {
     display: none;
   }
+  .ps-section--static {
+    padding: 72px 16px;
+  }
   .ps-static-card {
     flex-direction: column;
     text-align: center;
+    padding: 24px 18px;
+  }
+  .ps-static-card:last-child {
+    flex-direction: column-reverse;
+  }
+  .ps-static-card .ps-visual {
+    width: 100%;
   }
 }
 
@@ -2088,16 +2152,17 @@
    padding/type/visual step down to compensate and the title/description stay
    legible on screen. */
 .hiw-stage--compact {
-  --visual-scale: 0.55;
+  /* (cardW 290 - 2 × 16px padding) / 404px design box */
+  --visual-scale: 0.638;
 }
 .hiw-stage--compact .hiw-card-body {
   padding: 16px;
 }
 .hiw-stage--compact .hiw-card-title {
-  font-size: 17px;
+  font-size: 18px;
 }
 .hiw-stage--compact .hiw-card-desc {
-  font-size: 12px;
+  font-size: 12.5px;
   margin-bottom: 10px;
 }
 .hiw-stage--compact .hiw-step-no {
@@ -2117,7 +2182,7 @@
     padding-right: 12px;
   }
   .hiw-stage-wrap {
-    height: min(400px, 58vh);
+    height: min(420px, 60vh);
     perspective: 1200px;
   }
 }

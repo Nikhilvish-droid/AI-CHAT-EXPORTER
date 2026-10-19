@@ -54,11 +54,11 @@ export const DESKTOP = {
 // radius shrinks — but it stays a real cylinder (cards still move in x,
 // never y) rather than collapsing back into a flat stack.
 export const COMPACT = {
-  rx: 140,
-  cardW: 250,
-  cardH: 320,
-  stageW: 300,
-  stageH: 370,
+  rx: 150,
+  cardW: 290,
+  cardH: 350,
+  stageW: 330,
+  stageH: 390,
   arrowRx: 150,
   arrowRy: 70,
   showFlow: false,

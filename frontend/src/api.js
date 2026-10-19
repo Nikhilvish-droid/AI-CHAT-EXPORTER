@@ -2,7 +2,7 @@
 // The pipeline is split into four small requests (scrape -> analyze -> write
 // -> export) so the UI can show real progress instead of one long spinner.
 
-const BASE = 'http://127.0.0.1:8000/'
+const BASE = 'http://127.0.0.1:8000'
 
 async function postJSON(path, body) {
   const res = await fetch(`${BASE}${path}`, {

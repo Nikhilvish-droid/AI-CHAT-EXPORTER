@@ -1,0 +1,83 @@
+# Continuous deployment: every push to main logs in to the EC2 server over SSH,
+# pulls the new code, updates the backend and rebuilds the frontend.
+#
+# Needs two repository secrets (GitHub repo -> Settings -> Secrets and variables -> Actions):
+#   EC2_HOST     the server's public IP, e.g. 15.207.20.125
+#   EC2_SSH_KEY  the full contents of chat-exporter.pem
+
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # adds a "Run workflow" button in the Actions tab
+
+# Never run two deployments at the same time.
+concurrency:
+  group: deploy-ec2
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      EC2_HOST: ${{ secrets.EC2_HOST }}
+
+    steps:
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ec2.pem
+          chmod 600 ~/.ssh/ec2.pem
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy on the server
+        run: |
+          ssh -i ~/.ssh/ec2.pem ubuntu@"$EC2_HOST" 'bash -s' <<'EOF'
+          set -e   # stop at the first command that fails
+
+          echo "=== 1. Get the latest code ==="
+          cd ~/app
+          git fetch origin main
+          git reset --hard origin/main   # .env and venv are git-ignored, so they are kept
+
+          echo "=== 2. Update backend packages ==="
+          cd ~/app/backend
+          source venv/bin/activate
+          pip install -r requirements.txt
+
+          echo "=== 3. Restart backend ==="
+          sudo systemctl restart chat-exporter
+
+          echo "=== 4. Wait until backend is healthy ==="
+          for i in $(seq 1 30); do
+            if curl -fs http://127.0.0.1:8000/health; then
+              echo " -> backend is up"
+              break
+            fi
+            if [ "$i" = 30 ]; then
+              echo "Backend did not start. Last logs:"
+              sudo journalctl -u chat-exporter -n 50 --no-pager
+              exit 1
+            fi
+            sleep 2
+          done
+
+          echo "=== 5. Build and publish frontend ==="
+          cd ~/app/frontend
+          npm ci
+          npm run build
+          sudo rm -rf /var/www/chat-exporter/*
+          sudo cp -r dist/. /var/www/chat-exporter/
+
+          echo "=== Deployed successfully ==="
+          EOF
+
+      - name: Check the website from outside
+        run: |
+          curl -fsS -o /dev/null "https://ai-chat-exporter.duckdns.org/"
+          curl -fsS "https://ai-chat-exporter.duckdns.org/health"
+          echo
+          echo "Site is live: https://ai-chat-exporter.duckdns.org"

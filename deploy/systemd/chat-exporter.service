@@ -1,0 +1,19 @@
+# Template: deploy/setup-server.sh fills in __APP_DIR__ and __USER__ and
+# installs it to /etc/systemd/system/chat-exporter.service.
+[Unit]
+Description=AI Chat Exporter API (FastAPI)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=__USER__
+WorkingDirectory=__APP_DIR__/backend
+EnvironmentFile=__APP_DIR__/backend/.env
+# Exactly one worker: session_store.py keeps state in process memory between
+# the four pipeline calls, so they must all reach the same process.
+ExecStart=__APP_DIR__/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

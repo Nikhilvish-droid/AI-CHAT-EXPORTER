@@ -2,7 +2,10 @@
 // The pipeline is split into four small requests (scrape -> analyze -> write
 // -> export) so the UI can show real progress instead of one long spinner.
 
-const BASE = 'http://127.0.0.1:8000/api'
+// Backend origin comes from VITE_API_URL (baked in at build time). Empty means
+// same origin: Nginx in production and the Vite proxy in dev forward /api/*.
+const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
+const BASE = `${API_URL}/api`
 
 async function postJSON(path, body) {
   const res = await fetch(`${BASE}${path}`, {

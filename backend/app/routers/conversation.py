@@ -17,6 +17,7 @@ from app.services.codeblocks import extract_code_blocks
 from app.services.chunks import create_chunks
 from app.services.embedding import create_embeddings
 from app.services.chroma import add_chunks_to_chroma
+from app.services.cleanup import drop_vectors
 from app.services.retrieval import retrieve_data
 from app.services.llm import openai_llm
 from app.services.pdfgenerator import generate_pdf
@@ -170,12 +171,15 @@ def analyze(body: ConversationRequest):
     if not stored.get("ok"):
         raise HTTPException(status_code=500, detail=stored.get("message") or "Vector store failed")
 
-    retrieval_data = stage(
-        "Retrieving context",
-        retrieve_data,
-        stored.get("conversation_id"),
-        embeddings.get("docs_embed"),
-    )
+    try:
+        retrieval_data = stage(
+            "Retrieving context",
+            retrieve_data,
+            stored.get("conversation_id"),
+            embeddings.get("docs_embed"),
+        )
+    finally:
+        drop_vectors(stored.get("conversation_id"))
 
     if not retrieval_data:
         raise HTTPException(

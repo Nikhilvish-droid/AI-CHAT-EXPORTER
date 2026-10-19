@@ -77,6 +77,9 @@ backend/
       claude_scraper/claudescraper.py     load_claude_chat(url)
       session_store.py             in-memory per-conversation state between the 4 requests
                                     (TTL-evicted; swap for Redis/DB to run more than one worker)
+      cleanup.py                   deletes a conversation's Chroma collection and downloaded
+                                    assets when its session is dropped or expires; clears
+                                    leftovers from previous runs at startup
       assets.py                    classifies/collects message attachments (images embeddable,
                                     others reference-only), builds the embedded/missing manifest
       codeblocks.py                extracts fenced code blocks and ASCII-art/box-drawing diagrams
@@ -87,7 +90,10 @@ backend/
       retrieval.py                 retrieve_data(conversation_id, docs_embed) — hybrid search
       llm.py                       openai_llm(retrieved_data) — section writer, budget-aware
       pdfgenerator.py              generate_pdf(...) — text sections + images + code blocks
-    chroma_data/                   persistent vector store (gitignored)
+    chroma_data/                   Chroma vector store (gitignored; a collection only lives
+                                    for the duration of /api/analyze)
+    storage/assets/                images/files downloaded by the scrapers (gitignored,
+                                    deleted with the session)
     output/                        generated PDFs (gitignored, deleted after each response)
 ```
 
@@ -127,7 +133,8 @@ by `assets.py` rather than `chunks.py`.
 frontend/
   src/
     api.js                        talks to /api/*; convertConversation() drives all 4 stages
-                                   and reports progress via an onStage(index) callback
+                                   and reports progress via an onStage(index) callback.
+                                   Prefixes requests with VITE_API_URL (empty = same origin)
     App.jsx                       page composition
     components/
       Nav.jsx, CaveHero.jsx       landing hero
@@ -136,6 +143,8 @@ frontend/
       BrandMarquee.jsx, ProblemSolution.jsx, SupportedAgents.jsx, FAQ.jsx, Footer.jsx
       HowItWorks/                 animated step-by-step explainer (GSAP-driven orbit/arrows)
   vite.config.js                  dev server proxies /api/* to http://127.0.0.1:8000
+  .env.production                 VITE_API_URL for `npm run build` (empty: the site calls /api
+                                   on its own host, which Nginx proxies to the backend)
 ```
 
 Built with React 19, Vite, Framer Motion and GSAP for the landing animations.
@@ -158,11 +167,12 @@ pip install -r requirements.txt
 playwright install chromium      # needed by the Gemini scraper
 ```
 
-Create `backend/.env`:
+Create `backend/.env` (copy `backend/.env.example`):
 
 ```
 GROQ_API_KEY=<groq api key>       # used by app/services/llm.py against api.groq.com
 ALLOWED_ORIGINS=http://localhost:5173   # comma-separated; defaults to * if unset
+WARMUP_MODEL=0                    # 1 = load the embedding model at startup, not on first use
 ```
 
 `XAI_API_KEY` is still accepted as a fallback name for `GROQ_API_KEY` for backward
@@ -176,6 +186,10 @@ On first run `sentence-transformers` downloads `all-MiniLM-L6-v2` (~90 MB) and c
 cd frontend
 npm install
 ```
+
+`VITE_API_URL` (see `frontend/.env.example`) is the backend origin, baked in at build time.
+Leave it empty to call `/api` on the same origin: the Vite dev proxy forwards it locally and
+Nginx forwards it in production. `frontend/.env.production` keeps it empty for `npm run build`.
 
 ---
 
@@ -202,6 +216,114 @@ curl -X POST http://127.0.0.1:8000/api/export   -H "Content-Type: application/js
 Platform is chosen by an allowlist of hosts (`chatgpt.com`/`chat.openai.com`,
 `gemini.google.com`/`g.co`, `claude.ai`) in `routers/conversation.py`. Anything else is
 rejected with a 422 before any scraping happens.
+
+---
+
+## Deploying to AWS (EC2 free tier)
+
+Everything runs on **one EC2 instance**: Nginx serves the built frontend and proxies `/api/*`
+to a single uvicorn worker on `127.0.0.1:8000`. The browser only talks to one origin, so there
+is no CORS setup and no API URL to configure. One instance also stays inside the free tier's
+750 instance-hours a month; two instances running all month would not.
+
+```
+Browser ──► EC2 (Ubuntu 24.04)
+             ├─ Nginx :80 ── /       → /var/www/chat-exporter  (frontend/dist)
+             │           └── /api/*  → uvicorn 127.0.0.1:8000  (systemd: chat-exporter)
+             └─ backend/venv: CPU-only torch, Chroma, Playwright Chromium → Groq API
+```
+
+Files in `deploy/`:
+
+| File | What it does |
+|---|---|
+| `setup-server.sh` | Run on the server. Adds swap, installs packages, CPU-only torch, requirements, Playwright Chromium, the systemd service and the Nginx site. Safe to re-run after `git pull`. |
+| `deploy-frontend.ps1` | Run on your PC. `npm run build`, then uploads `frontend/dist` to the server. |
+| `nginx/chat-exporter.conf` | Static files + `/api` proxy (300 s timeouts, per-IP rate limit). |
+| `systemd/chat-exporter.service` | uvicorn with `--workers 1` (required by the in-memory session store). |
+
+### 1. Launch the instance
+
+In the EC2 console → **Launch instance**:
+
+- **AMI:** Ubuntu Server 24.04 LTS (x86_64).
+- **Instance type:** one marked *Free tier eligible*. `t3.micro`/`t2.micro` (1 GB) works
+  thanks to the swap the setup script adds, but is slow; if your account offers
+  `t3.small`, `c7i-flex.large` or `m7i-flex.large` as free-tier eligible, pick the largest.
+- **Key pair:** create one and save the `.pem`.
+- **Security group:** SSH (22) from *My IP* only; HTTP (80) and HTTPS (443) from anywhere.
+  Do **not** open 8000; uvicorn only listens on localhost.
+- **Storage:** 30 GB gp3 (the free-tier maximum).
+- **Advanced → Credit specification:** *Standard* for `t2`/`t3`, so sustained CPU can't
+  bill you under *Unlimited*.
+
+Optional: allocate an **Elastic IP** and associate it, so the address survives a stop/start.
+
+### 2. Set up the backend + Nginx
+
+On Windows, OpenSSH refuses a key file other users can read. Fix it once:
+
+```powershell
+icacls C:\path\to\key.pem /inheritance:r /grant:r "$($env:USERNAME):R"
+```
+
+Then:
+
+```bash
+ssh -i C:\path\to\key.pem ubuntu@<EC2-PUBLIC-IP>
+
+git clone <your-repo-url> ~/app        # private repo: use a GitHub deploy key or token
+cd ~/app
+bash deploy/setup-server.sh            # ~10 min; creates backend/.env on first run
+
+nano backend/.env                      # set GROQ_API_KEY (ALLOWED_ORIGINS is pre-filled)
+sudo systemctl restart chat-exporter
+curl http://127.0.0.1:8000/health      # {"status":"ok"}
+```
+
+### 3. Build and upload the frontend
+
+From the repo root on your PC:
+
+```powershell
+.\deploy\deploy-frontend.ps1 -HostName <EC2-PUBLIC-IP> -KeyPath C:\path\to\key.pem
+```
+
+Open `http://<EC2-PUBLIC-IP>` and convert a share link. A Claude link is the lightest test;
+Gemini links start headless Chromium and are the heaviest.
+
+### Updating
+
+- **Frontend changed:** re-run `deploy-frontend.ps1`.
+- **Backend changed:** on the server, `cd ~/app && git pull && bash deploy/setup-server.sh`.
+
+### Operating it
+
+```bash
+journalctl -u chat-exporter -f          # backend logs
+sudo systemctl restart chat-exporter    # after editing backend/.env
+sudo tail -f /var/log/nginx/error.log   # proxy errors, 502/504s
+free -h && df -h /                      # memory/swap and disk
+```
+
+### HTTPS (needs a domain)
+
+Point an A record at the instance (Elastic IP recommended), then:
+
+```bash
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d your.domain
+```
+
+Change `ALLOWED_ORIGINS` in `backend/.env` to `https://your.domain` and restart the service.
+
+### Free-tier notes
+
+- Create an **AWS Budgets** alert (e.g. $1) before anything else.
+- The free allowance covers **one** instance running all month. A second running instance,
+  an Elastic IP that isn't attached to a running instance, or more than 30 GB of EBS is billed.
+- The first `/api/analyze` after a restart is slow on a micro instance: torch and the
+  embedding model have to load (`WARMUP_MODEL=1`, set by the setup script, starts this at boot).
 
 ---
 
@@ -234,9 +356,10 @@ reranking stage that was scaffolded but never wired into `retrieve_section()`.
   Fine for a single dev/demo `uvicorn` worker; running multiple workers (or a serverless
   deployment) needs it swapped for Redis or a DB, since a request can land on a worker that
   never saw the earlier stage.
-- **Chroma collections are never cleaned up.** Re-submitting the same conversation calls
-  `collection.add` with chunk IDs that already exist in that collection.
-- **No auth on the endpoints**, and no rate limiting beyond what Groq itself enforces.
+- **No auth on the endpoints.** The Nginx config in `deploy/` rate-limits `/api/*` per IP;
+  running uvicorn directly has no rate limiting beyond what Groq itself enforces.
+- **A restart wipes in-flight work.** Sessions are in memory, so on startup `cleanup.py`
+  deletes whatever vectors, assets and export PDFs the previous process left behind.
 - **The scrapers depend on undocumented page internals** (ChatGPT's `streamController.enqueue`
   payload, Gemini's `<share-turn-viewer>` DOM, Claude's `chat_snapshots` endpoint). Expect
   them to break when those change; each returns a descriptive `_fail` message naming the
